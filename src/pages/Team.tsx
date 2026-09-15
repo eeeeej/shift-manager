@@ -1,4 +1,4 @@
-import { Link2, Mail, Pencil, Phone, Plus, Send } from 'lucide-react'
+import { Link2, Mail, Pencil, Phone, Plus, Send, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import { EmployeeModal } from '../components/EmployeeModal'
 import { Avatar, EmptyState, PageHeader } from '../components/ui'
@@ -29,7 +29,7 @@ export function Team() {
     <div>
       <PageHeader
         title="Team"
-        subtitle={`${employees.filter((e) => e.active).length} active staff`}
+        subtitle={`${employees.filter((e) => e.active).length} active staff · ${employees.filter((e) => e.active && e.role === 'admin').length} managers`}
         actions={
           <>
             <label className="flex items-center gap-1.5 text-sm text-slate-600">
@@ -55,6 +55,11 @@ export function Team() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium">{e.name}</span>
+                  {e.role === 'admin' && (
+                    <span className="chip bg-indigo-100 text-indigo-800" title="Owner / manager">
+                      <ShieldCheck size={10} className="mr-1" /> manager
+                    </span>
+                  )}
                   {e.userId ? (
                     <span className="chip bg-emerald-100 text-emerald-800" title="Linked to a login">
                       <Link2 size={10} className="mr-1" /> linked

@@ -19,6 +19,8 @@ export interface Employee {
   userId: string | null
   color: string
   active: boolean
+  /** admin = owner/manager; mirrored onto the linked login account */
+  role: Role
 }
 
 export type ShiftStatus = 'scheduled' | 'open'

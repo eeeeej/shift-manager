@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Employee, EmployeeInput, OfferStatus, Position, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
+import type { Employee, EmployeeInput, OfferStatus, Position, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 
 interface EmployeeRow {
@@ -11,6 +11,7 @@ interface EmployeeRow {
   user_id: string | null
   color: string
   active: boolean
+  role: Role
 }
 
 interface ShiftRow {
@@ -46,6 +47,7 @@ const toEmployee = (r: EmployeeRow): Employee => ({
   userId: r.user_id,
   color: r.color,
   active: r.active,
+  role: r.role,
 })
 
 const toShift = (r: ShiftRow): Shift => ({
@@ -93,6 +95,7 @@ function employeePatch(p: Partial<EmployeeInput>): Partial<EmployeeRow> {
   if ('phone' in p) row.phone = p.phone ?? null
   if (p.color !== undefined) row.color = p.color
   if (p.active !== undefined) row.active = p.active
+  if (p.role !== undefined) row.role = p.role
   return row
 }
 

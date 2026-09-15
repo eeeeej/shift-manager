@@ -1,6 +1,7 @@
 import type { Employee, EmployeeInput, Shift, ShiftInput, ShiftOffer } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 import { SEED_EMPLOYEES, SEED_OFFERS, SEED_SHIFTS } from './seed'
+import { setDemoAccountRole } from '../auth/AuthContext'
 
 const KEY = 'shift-manager:demo:v1'
 
@@ -11,7 +12,11 @@ function uid(prefix: string) {
 function readSnapshot(): Snapshot {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw) as Snapshot
+    if (raw) {
+      const snap = JSON.parse(raw) as Snapshot
+      snap.employees = snap.employees.map((e) => ({ ...e, role: e.role ?? 'employee' }))
+      return snap
+    }
   } catch {
     /* fall through to seed */
   }
@@ -67,6 +72,7 @@ export class MockStore implements DataStore {
     if (idx < 0) throw new Error('Employee not found')
     const next = { ...this.snap.employees[idx], ...patch }
     this.snap.employees[idx] = next
+    if (patch.role && next.email) setDemoAccountRole(next.email, patch.role)
     this.persist()
     return next
   }

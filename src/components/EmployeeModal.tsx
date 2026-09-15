@@ -6,13 +6,15 @@ import { nextColor, PALETTE } from '../utils/colors'
 import { ErrorText, Modal } from './ui'
 
 export function EmployeeModal({ employee, onClose }: { employee: Employee | null; onClose: () => void }) {
-  const { employees, createEmployee, updateEmployee, deleteEmployee } = useData()
+  const { employees, me, createEmployee, updateEmployee, deleteEmployee } = useData()
   const [name, setName] = useState(employee?.name ?? '')
   const [positions, setPositions] = useState<Position[]>(employee?.positions ?? ['Server'])
   const [email, setEmail] = useState(employee?.email ?? '')
   const [phone, setPhone] = useState(employee?.phone ?? '')
   const [color, setColor] = useState(employee?.color ?? nextColor(employees.map((e) => e.color)))
   const [active, setActive] = useState(employee?.active ?? true)
+  const [isManager, setIsManager] = useState(employee?.role === 'admin')
+  const isSelf = !!employee && employee.id === me?.id
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -30,6 +32,7 @@ export function EmployeeModal({ employee, onClose }: { employee: Employee | null
       phone: phone.trim() || null,
       color,
       active,
+      role: isManager ? 'admin' : 'employee',
     }
     setBusy(true)
     try {
@@ -122,6 +125,11 @@ export function EmployeeModal({ employee, onClose }: { employee: Employee | null
             ))}
           </div>
         </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={isManager} disabled={isSelf} onChange={(e) => setIsManager(e.target.checked)} />
+          Manager (can edit the schedule, team and all offers)
+          {isSelf && <span className="text-xs text-slate-400">— you can't change your own access</span>}
+        </label>
         {employee && (
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />

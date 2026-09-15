@@ -68,6 +68,19 @@ function writeDemoAccounts(accounts: DemoAccount[]) {
   localStorage.setItem(DEMO_ACCOUNTS_KEY, JSON.stringify(accounts))
 }
 
+/** Demo-only: mirror an employee's role onto their login (and live session). */
+export function setDemoAccountRole(email: string, role: Profile['role']) {
+  const accounts = readDemoAccounts().map((a) => (a.email.toLowerCase() === email.toLowerCase() ? { ...a, role } : a))
+  writeDemoAccounts(accounts)
+  const raw = localStorage.getItem(DEMO_SESSION_KEY)
+  if (raw) {
+    const session = JSON.parse(raw) as Profile
+    if (session.email.toLowerCase() === email.toLowerCase()) {
+      localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ ...session, role }))
+    }
+  }
+}
+
 const toProfile = (a: DemoAccount): Profile => ({ id: a.id, email: a.email, role: a.role, fullName: a.fullName })
 
 function useDemoAuth(): AuthApi {

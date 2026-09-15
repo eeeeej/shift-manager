@@ -19,7 +19,7 @@ Demo accounts (password `password`):
 
 ## Supabase
 
-1. Create a project and apply `supabase/migrations/0001_init.sql` (tables, RLS, `claim_offer` RPC, email-linking triggers).
+1. Create a project and apply `supabase/migrations/*.sql` in order (tables, RLS, `claim_offer` RPC, email-linking triggers, manager role sync). The first account to sign up becomes an admin; promote further managers from the Team page.
 2. Enable Email (with OTP confirmation), Google and optionally Apple providers in Auth.
 3. Add a `.env.local`:
 

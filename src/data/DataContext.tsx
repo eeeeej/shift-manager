@@ -78,7 +78,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     )
   }, [employees, user])
 
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = me ? me.role === 'admin' : user?.role === 'admin'
 
   const run = useCallback(
     async (fn: () => Promise<unknown>) => {
