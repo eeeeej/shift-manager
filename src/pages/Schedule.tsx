@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Copy, Plus } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { CopyWeekModal, type CopyResult } from '../components/CopyWeekModal'
 import { ShiftRow } from '../components/ShiftCard'
 import { ShiftDetailModal } from '../components/ShiftDetailModal'
@@ -12,12 +12,43 @@ import { useIsDesktop } from '../hooks/useMediaQuery'
 import { POSITIONS, type Position, type Shift } from '../types'
 import { addDays, dateRange, formatDateLong, fromDateKey, startOfWeek, todayKey } from '../utils/time'
 
+function FilterChip({
+  active,
+  color,
+  onClick,
+  children,
+}: {
+  active: boolean
+  color?: string
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      aria-pressed={active}
+      onClick={onClick}
+      className={`chip border py-1 transition ${
+        active
+          ? 'border-transparent text-white'
+          : color
+            ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+            : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+      }`}
+      style={active ? { backgroundColor: color ?? '#0f172a' } : undefined}
+    >
+      {color && !active && <span className="mr-1.5 h-2 w-2 rounded-full" style={{ backgroundColor: color }} />}
+      {children}
+    </button>
+  )
+}
+
 export function Schedule() {
   const { shifts, employees, offers, isAdmin, me, employeeById, createShifts, deleteShifts } = useData()
   const isDesktop = useIsDesktop()
   const [view, setView] = useState<'week' | 'month'>('week')
-  const [days, setDays] = useState(7)
-  const [start, setStart] = useState(() => startOfWeek(todayKey()))
+  // Staff land on today's schedule; managers get the full week.
+  const [days, setDays] = useState(isAdmin ? 7 : 1)
+  const [start, setStart] = useState(() => (isAdmin ? startOfWeek(todayKey()) : todayKey()))
   const isMonth = view === 'month'
   const [months, setMonths] = useState<string[]>(() => {
     const m = monthKey(todayKey())
@@ -37,7 +68,14 @@ export function Schedule() {
     setScrollTarget((t) => ({ month: m, key: (t?.key ?? 0) + 1 }))
   }
   const [position, setPosition] = useState<Position | ''>('')
-  const [employeeFilter, setEmployeeFilter] = useState<string>('')
+  const [employeeFilter, setEmployeeFilter] = useState<Set<string>>(() => new Set())
+  const toggleEmployee = (id: string) =>
+    setEmployeeFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const [draft, setDraft] = useState<ShiftDraft | null>(null)
   const [detail, setDetail] = useState<Shift | null>(null)
   const [copying, setCopying] = useState(false)
@@ -73,10 +111,17 @@ export function Schedule() {
         (s) =>
           range.includes(s.date) &&
           (!position || s.position === position) &&
-          (!employeeFilter || s.employeeId === employeeFilter),
+          (employeeFilter.size === 0 || (s.employeeId !== null && employeeFilter.has(s.employeeId))),
       ),
     [shifts, range, position, employeeFilter],
   )
+  /** Employees with a shift in the displayed range (admin filter chips). */
+  const scheduledEmployees = useMemo(() => {
+    const ids = new Set(
+      shifts.filter((s) => range.includes(s.date) && (!position || s.position === position)).map((s) => s.employeeId),
+    )
+    return employees.filter((e) => e.id !== me?.id && ids.has(e.id)).sort((a, b) => a.name.localeCompare(b.name))
+  }, [shifts, range, position, employees, me])
   const offeredShiftIds = useMemo(
     () => new Set(offers.filter((o) => o.status === 'open').map((o) => o.shiftId)),
     [offers],
@@ -200,19 +245,28 @@ export function Schedule() {
             <option key={p}>{p}</option>
           ))}
         </select>
+      </div>
 
-        <select className="input w-auto" value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)}>
-          <option value="">Everyone</option>
-          {me && <option value={me.id}>Just me</option>}
-          {employees
-            .filter((e) => e.active && e.id !== me?.id)
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
-        </select>
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <FilterChip active={employeeFilter.size === 0} onClick={() => setEmployeeFilter(new Set())}>
+          Everyone
+        </FilterChip>
+        {me && (
+          <FilterChip active={employeeFilter.has(me.id)} color={me.color} onClick={() => toggleEmployee(me.id)}>
+            Just me
+          </FilterChip>
+        )}
+        {isAdmin &&
+          scheduledEmployees.map((e) => (
+            <FilterChip
+              key={e.id}
+              active={employeeFilter.has(e.id)}
+              color={e.color}
+              onClick={() => toggleEmployee(e.id)}
+            >
+              {e.name.split(' ')[0]}
+            </FilterChip>
+          ))}
       </div>
 
       {isDesktop && isMonth ? (
@@ -224,7 +278,7 @@ export function Schedule() {
           scrollTarget={scrollTarget}
           shifts={visible}
           employees={employees}
-          hideNames={!!employeeFilter}
+          hideNames={employeeFilter.size === 1}
           highlightEmployeeId={me?.id}
           offeredShiftIds={offeredShiftIds}
           onShiftClick={openShift}
@@ -235,7 +289,7 @@ export function Schedule() {
         <TimelineGrid
           days={range}
           shifts={visible}
-          hideNames={!!employeeFilter}
+          hideNames={employeeFilter.size === 1}
           employees={employees}
           highlightEmployeeId={me?.id}
           offeredShiftIds={offeredShiftIds}
