@@ -1,8 +1,19 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { ArrowLeftRight } from 'lucide-react'
 import type { Employee, Position, Shift, ShiftInput } from '../types'
 import { shiftColor } from '../utils/colors'
 import { formatShorthand } from '../utils/time'
 import { QuickAddPopover } from './QuickAddPopover'
+
+/** Short tag shown on chips for non-server roles ("BB" as on the spreadsheet). */
+export const POSITION_TAGS: Partial<Record<Position, string>> = {
+  'Bar Back': 'BB',
+  Bartender: 'BAR',
+  Host: 'HOST',
+  Busser: 'BUS',
+  Kitchen: 'KIT',
+  Manager: 'MGR',
+}
 
 /** Spreadsheet divider between the day and evening crews. */
 export const DIVIDER_MIN = 16 * 60
@@ -160,8 +171,13 @@ export function DayCell({
       >
         {!open && <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: shiftColor(s, emp) }} />}
         <span className="truncate">{open ? `OPEN ${text}` : text}</span>
+        {POSITION_TAGS[s.position] && (
+          <span className="shrink-0 rounded bg-slate-800/80 px-1 text-[9px] font-semibold leading-3 text-white">
+            {POSITION_TAGS[s.position]}
+          </span>
+        )}
         {offeredShiftIds?.has(s.id) && (
-          <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Up for trade" />
+          <ArrowLeftRight className="ml-auto h-3 w-3 shrink-0 text-amber-600" aria-label="Up for trade" />
         )}
       </button>
     )

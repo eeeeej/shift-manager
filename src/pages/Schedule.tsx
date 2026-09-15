@@ -91,7 +91,16 @@ export function Schedule() {
     })
     setScrollTarget((t) => ({ month: m, key: (t?.key ?? 0) + 1 }))
   }
-  const [position, setPosition] = useState<Position | ''>('')
+  const [positionFilter, setPositionFilter] = useState<Set<Position>>(() => new Set())
+  const togglePosition = (p: Position) =>
+    setPositionFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(p)) next.delete(p)
+      else next.add(p)
+      return next
+    })
+  /** Default position for new shifts: the single selected chip, else Server. */
+  const position: Position | '' = positionFilter.size === 1 ? [...positionFilter][0] : ''
   const [employeeFilter, setEmployeeFilter] = useState<Set<string>>(() => new Set())
   const toggleEmployee = (id: string) =>
     setEmployeeFilter((prev) => {
@@ -143,23 +152,25 @@ export function Schedule() {
       shifts.filter(
         (s) =>
           range.includes(s.date) &&
-          (!position || s.position === position) &&
+          (positionFilter.size === 0 || positionFilter.has(s.position)) &&
           (employeeFilter.size === 0 || (s.employeeId !== null && employeeFilter.has(s.employeeId))),
       ),
-    [shifts, range, position, employeeFilter],
+    [shifts, range, positionFilter, employeeFilter],
   )
   /** Positions that have a shift in the displayed range (filter chips). */
   const scheduledPositions = useMemo(() => {
     const used = new Set(shifts.filter((s) => range.includes(s.date)).map((s) => s.position))
-    return POSITIONS.filter((p) => used.has(p) || p === position)
-  }, [shifts, range, position])
+    return POSITIONS.filter((p) => used.has(p) || positionFilter.has(p))
+  }, [shifts, range, positionFilter])
   /** Employees with a shift in the displayed range (admin filter chips). */
   const scheduledEmployees = useMemo(() => {
     const ids = new Set(
-      shifts.filter((s) => range.includes(s.date) && (!position || s.position === position)).map((s) => s.employeeId),
+      shifts
+        .filter((s) => range.includes(s.date) && (positionFilter.size === 0 || positionFilter.has(s.position)))
+        .map((s) => s.employeeId),
     )
     return employees.filter((e) => e.id !== me?.id && ids.has(e.id)).sort((a, b) => a.name.localeCompare(b.name))
-  }, [shifts, range, position, employees, me])
+  }, [shifts, range, positionFilter, employees, me])
   const offeredShiftIds = useMemo(
     () => new Set(offers.filter((o) => o.status === 'open').map((o) => o.shiftId)),
     [offers],
@@ -287,11 +298,11 @@ export function Schedule() {
       </div>
 
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <FilterChip active={!position} onClick={() => setPosition('')}>
+        <FilterChip active={positionFilter.size === 0} onClick={() => setPositionFilter(new Set())}>
           All positions
         </FilterChip>
         {scheduledPositions.map((p) => (
-          <FilterChip key={p} active={position === p} onClick={() => setPosition(position === p ? '' : p)}>
+          <FilterChip key={p} active={positionFilter.has(p)} onClick={() => togglePosition(p)}>
             {p}
           </FilterChip>
         ))}
