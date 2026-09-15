@@ -1,15 +1,15 @@
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { ShiftRow } from '../components/ShiftCard'
 import { ShiftDetailModal } from '../components/ShiftDetailModal'
 import { ShiftModal, type ShiftDraft } from '../components/ShiftModal'
-import { MonthGrid, monthRange } from '../components/MonthGrid'
+import { addMonths, formatMonth, MonthGrid, monthKey, monthRange } from '../components/MonthGrid'
 import { TimelineGrid } from '../components/TimelineGrid'
 import { EmptyState, PageHeader } from '../components/ui'
 import { useData } from '../data/DataContext'
 import { useIsDesktop } from '../hooks/useMediaQuery'
 import { POSITIONS, type Position, type Shift } from '../types'
-import { addDays, dateRange, formatDateLong, fromDateKey, startOfWeek, toDateKey, todayKey } from '../utils/time'
+import { addDays, dateRange, formatDateLong, fromDateKey, startOfWeek, todayKey } from '../utils/time'
 
 export function Schedule() {
   const { shifts, employees, offers, isAdmin, me, employeeById } = useData()
@@ -18,6 +18,23 @@ export function Schedule() {
   const [days, setDays] = useState(7)
   const [start, setStart] = useState(() => startOfWeek(todayKey()))
   const isMonth = view === 'month'
+  const [months, setMonths] = useState<string[]>(() => {
+    const m = monthKey(todayKey())
+    return [m, addMonths(m, 1)]
+  })
+  const [visibleMonth, setVisibleMonth] = useState(() => monthKey(todayKey()))
+  const [scrollTarget, setScrollTarget] = useState<{ month: string; key: number } | null>(null)
+  const needBefore = useCallback(() => setMonths((ms) => [addMonths(ms[0], -1), ...ms]), [])
+  const needAfter = useCallback(() => setMonths((ms) => [...ms, addMonths(ms[ms.length - 1], 1)]), [])
+  const jumpToMonth = (m: string) => {
+    setMonths((ms) => {
+      let next = ms
+      while (m < next[0]) next = [addMonths(next[0], -1), ...next]
+      while (m > next[next.length - 1]) next = [...next, addMonths(next[next.length - 1], 1)]
+      return next
+    })
+    setScrollTarget((t) => ({ month: m, key: (t?.key ?? 0) + 1 }))
+  }
   const [position, setPosition] = useState<Position | ''>('')
   const [employeeFilter, setEmployeeFilter] = useState<string>('')
   const [draft, setDraft] = useState<ShiftDraft | null>(null)
@@ -25,9 +42,10 @@ export function Schedule() {
 
   const range = useMemo(() => {
     if (!isMonth) return dateRange(start, days)
-    const { start: s, end } = monthRange(start)
-    return dateRange(s, fromDateKey(end).getDate())
-  }, [start, days, isMonth])
+    const s = monthRange(months[0]).start
+    const end = monthRange(months[months.length - 1]).end
+    return dateRange(s, Math.round((fromDateKey(end).getTime() - fromDateKey(s).getTime()) / 86400000) + 1)
+  }, [start, days, isMonth, months])
   const visible = useMemo(
     () =>
       shifts.filter(
@@ -44,15 +62,17 @@ export function Schedule() {
   )
 
   const step = (dir: 1 | -1) => {
-    if (isMonth) {
-      const d = fromDateKey(start)
-      setStart(toDateKey(new Date(d.getFullYear(), d.getMonth() + dir, 1)))
-    } else setStart(addDays(start, dir * days))
+    if (isMonth) jumpToMonth(addMonths(visibleMonth, dir))
+    else setStart(addDays(start, dir * days))
   }
-  const goToday = () => setStart(isMonth || days !== 7 ? todayKey() : startOfWeek(todayKey()))
+  const goToday = () => {
+    if (isMonth) jumpToMonth(monthKey(todayKey()))
+    else setStart(days !== 7 ? todayKey() : startOfWeek(todayKey()))
+  }
   const changeView = (v: 'week' | 'month') => {
     setView(v)
-    if (v === 'week') setStart(days === 7 ? startOfWeek(start) : start)
+    if (v === 'month') jumpToMonth(monthKey(start))
+    else setStart(days === 7 ? startOfWeek(start) : start)
   }
   const openDay = (d: string) => {
     setView('week')
@@ -69,7 +89,7 @@ export function Schedule() {
   const first = fromDateKey(range[0])
   const last = fromDateKey(range[range.length - 1])
   const title = isMonth
-    ? first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    ? formatMonth(visibleMonth)
     : days === 1
       ? formatDateLong(range[0])
       : `${first.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${last.toLocaleDateString(
@@ -165,7 +185,11 @@ export function Schedule() {
 
       {isDesktop && isMonth ? (
         <MonthGrid
-          month={start}
+          months={months}
+          onNeedBefore={needBefore}
+          onNeedAfter={needAfter}
+          onVisibleMonth={setVisibleMonth}
+          scrollTarget={scrollTarget}
           shifts={visible}
           employees={employees}
           hideNames={!!employeeFilter}
