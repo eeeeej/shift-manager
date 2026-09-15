@@ -45,23 +45,26 @@ function FilterChip({
 
 const VIEW_KEY = 'shift-manager:schedule:view'
 const LAYOUT_KEY = 'shift-manager:schedule:layout'
+type View = 'month' | 'week' | 'days'
 
 export function Schedule() {
   const { shifts, employees, offers, isAdmin, me, employeeById, createShift, updateShift, createShifts, deleteShifts } =
     useData()
   const isDesktop = useIsDesktop()
   // Managers build the schedule in the month grid, so it's their default (last choice remembered).
-  const [view, setViewState] = useState<'week' | 'month'>(() => {
-    if (!isAdmin) return 'week'
-    return localStorage.getItem(VIEW_KEY) === 'week' ? 'week' : 'month'
+  // Month and Week snap to Sunday; Days is a 1–7 day run starting today.
+  const [view, setViewState] = useState<View>(() => {
+    if (!isAdmin) return 'days'
+    const saved = localStorage.getItem(VIEW_KEY)
+    return saved === 'week' || saved === 'days' ? saved : 'month'
   })
-  const setView = (v: 'week' | 'month') => {
+  const setView = (v: View) => {
     setViewState(v)
     if (isAdmin) localStorage.setItem(VIEW_KEY, v)
   }
-  // Multi-day ranges start on today rather than snapping to Sunday.
-  const [days, setDays] = useState(isAdmin ? 7 : 1)
-  const [start, setStart] = useState(todayKey)
+  const [dayCount, setDayCount] = useState(1)
+  const [start, setStart] = useState(() => (view === 'days' ? todayKey() : startOfWeek(todayKey())))
+  const days = view === 'week' ? 7 : dayCount
   // Desktop multi-day: time axis or condensed chip columns.
   const [layout, setLayoutState] = useState<'timeline' | 'list'>(() =>
     localStorage.getItem(LAYOUT_KEY) === 'list' ? 'list' : 'timeline',
@@ -168,15 +171,17 @@ export function Schedule() {
   }
   const goToday = () => {
     if (isMonth) jumpToMonth(monthKey(todayKey()))
-    else setStart(todayKey())
+    else setStart(view === 'week' ? startOfWeek(todayKey()) : todayKey())
   }
-  const changeView = (v: 'week' | 'month') => {
+  const changeView = (v: View) => {
     setView(v)
     if (v === 'month') jumpToMonth(monthKey(start))
+    else if (v === 'week') setStart(startOfWeek(start))
+    else setStart(todayKey())
   }
   const openDay = (d: string) => {
-    setView('week')
-    setDays(1)
+    setView('days')
+    setDayCount(1)
     setStart(d)
   }
 
@@ -239,7 +244,7 @@ export function Schedule() {
         </div>
 
         <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white text-sm">
-          {(['week', 'month'] as const).map((v) => (
+          {(['month', 'week', 'days'] as const).map((v) => (
             <button
               key={v}
               onClick={() => changeView(v)}
@@ -250,12 +255,12 @@ export function Schedule() {
           ))}
         </div>
 
-        {!isMonth && (
+        {view === 'days' && (
           <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white text-sm">
             {[1, 2, 3, 4, 5, 6, 7].map((n) => (
               <button
                 key={n}
-                onClick={() => setDays(n)}
+                onClick={() => setDayCount(n)}
                 className={`px-2.5 py-1.5 ${days === n ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
               >
                 {n}
