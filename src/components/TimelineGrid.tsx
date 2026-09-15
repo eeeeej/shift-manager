@@ -46,10 +46,19 @@ export function TimelineGrid({
 
   const toY = (min: number) => ((Math.max(min, DAY_START_MIN) - DAY_START_MIN) / 60) * HOUR_PX
 
+  const laidByDay = useMemo(() => new Map(days.map((d) => [d, layoutLanes(byDay.get(d) ?? [])])), [days, byDay])
+  // Column weight grows with the busiest overlap of the day; empty days shrink.
+  const weights = days.map((d) => {
+    const lanes = Math.max(0, ...(laidByDay.get(d) ?? []).map((l) => l.laneCount))
+    return lanes === 0 ? 0.5 : 0.5 + 0.5 * lanes
+  })
+  const columns = days.length > 1 ? weights.map((w) => `minmax(48px, ${w}fr)`).join(' ') : 'minmax(0, 1fr)'
+  const minWidth = days.length > 1 ? 56 + weights.reduce((a, w) => a + w, 0) * 40 : 320
+
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
-        <div className="min-w-[640px]" style={{ display: 'grid', gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `56px ${columns}`, minWidth }}>
           {/* header */}
           <div className="sticky top-0 z-10 border-b border-slate-200 bg-white" />
           {days.map((d) => {
@@ -80,7 +89,7 @@ export function TimelineGrid({
 
           {/* day columns */}
           {days.map((d) => {
-            const laid = layoutLanes(byDay.get(d) ?? [])
+            const laid = laidByDay.get(d) ?? []
             const isToday = d === today
             return (
               <div
