@@ -12,6 +12,7 @@ export function TimelineGrid({
   employees,
   highlightEmployeeId,
   offeredShiftIds,
+  hideNames,
   onShiftClick,
   onSlotClick,
 }: {
@@ -20,6 +21,7 @@ export function TimelineGrid({
   employees: Employee[]
   highlightEmployeeId?: string | null
   offeredShiftIds?: Set<string>
+  hideNames?: boolean
   onShiftClick?: (shift: Shift) => void
   /** Admin: click an empty area to create a shift at that time. */
   onSlotClick?: (date: string, startMin: number) => void
@@ -121,6 +123,7 @@ export function TimelineGrid({
                         shift={shift}
                         employee={emp}
                         compact={compact || laneCount > 2}
+                        hideName={hideNames}
                         highlighted={!!highlightEmployeeId && shift.employeeId === highlightEmployeeId}
                         hasOpenOffer={offeredShiftIds?.has(shift.id)}
                         onClick={onShiftClick ? () => onShiftClick(shift) : undefined}

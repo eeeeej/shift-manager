@@ -52,6 +52,16 @@ export function formatRange(start: number, end: number, compact = false): string
   return `${formatTime(start, compact)}–${endLabel}`
 }
 
+/** Spreadsheet-style shorthand: 10-4, 11:30-2, 4-CL. */
+export function formatShorthand(start: number, end: number): string {
+  const part = (min: number) => {
+    const h = Math.floor(min / 60) % 12 || 12
+    const m = min % 60
+    return m === 0 ? `${h}` : `${h}:${pad(m)}`
+  }
+  return `${part(start)}-${end >= CLOSE_MIN ? 'CL' : part(end)}`
+}
+
 export function formatDuration(start: number, end: number): string {
   const mins = end - start
   const h = Math.floor(mins / 60)

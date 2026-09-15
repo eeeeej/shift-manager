@@ -1,4 +1,4 @@
-import { ArrowLeftRight, CalendarDays, Home, LogOut, Users } from 'lucide-react'
+import { ArrowLeftRight, CalendarDays, LayoutDashboard, LogOut, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -13,7 +13,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const openOffers = visibleOffersFor(offers, shifts, me, isAdmin).filter((o) => o.status === 'open').length
 
   const nav = [
-    { to: '/', label: 'Home', icon: Home },
+    { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/schedule', label: 'Schedule', icon: CalendarDays },
     { to: '/offers', label: 'Offers', icon: ArrowLeftRight, badge: openOffers },
     ...(isAdmin ? [{ to: '/team', label: 'Team', icon: Users }] : []),

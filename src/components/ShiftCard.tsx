@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Employee, Shift } from '../types'
 import { shiftColor, withAlpha } from '../utils/colors'
-import { formatDuration, formatRange } from '../utils/time'
+import { formatDuration, formatRange, formatShorthand } from '../utils/time'
 import { Avatar } from './ui'
 
 /** Absolutely-positioned card for the timeline grid. */
@@ -9,6 +9,7 @@ export function TimelineShift({
   shift,
   employee,
   compact,
+  hideName,
   highlighted,
   hasOpenOffer,
   onClick,
@@ -16,6 +17,8 @@ export function TimelineShift({
   shift: Shift
   employee: Employee | undefined
   compact: boolean
+  /** Single-person views: show only a short time label (e.g. 10-4). */
+  hideName?: boolean
   highlighted?: boolean
   hasOpenOffer?: boolean
   onClick?: () => void
@@ -36,8 +39,14 @@ export function TimelineShift({
       }}
       title={`${employee?.name ?? 'Open shift'} · ${formatRange(shift.startMin, shift.endMin)}${shift.notes ? ` · ${shift.notes}` : ''}`}
     >
-      <span className="truncate font-semibold text-slate-900">{employee?.name ?? 'OPEN'}</span>
-      <span className="truncate text-slate-600">{formatRange(shift.startMin, shift.endMin, compact)}</span>
+      {hideName && employee ? (
+        <span className="truncate font-semibold text-slate-900">{formatShorthand(shift.startMin, shift.endMin)}</span>
+      ) : (
+        <>
+          <span className="truncate font-semibold text-slate-900">{employee?.name ?? 'OPEN'}</span>
+          <span className="truncate text-slate-600">{formatRange(shift.startMin, shift.endMin, compact)}</span>
+        </>
+      )}
       {!compact && shift.notes && <span className="truncate text-slate-500">{shift.notes}</span>}
       {hasOpenOffer && (
         <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-500" title="Up for trade" />
@@ -53,12 +62,14 @@ export function ShiftRow({
   onClick,
   trailing,
   showDate,
+  hideName,
 }: {
   shift: Shift
   employee: Employee | undefined
   onClick?: () => void
   trailing?: ReactNode
   showDate?: string
+  hideName?: boolean
 }) {
   const color = shiftColor(shift, employee)
   const isOpen = shift.status === 'open' || !employee
@@ -79,11 +90,13 @@ export function ShiftRow({
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <span className="truncate text-sm font-medium">{employee?.name ?? 'Open shift'}</span>
+          <span className="truncate text-sm font-medium">
+            {hideName && employee ? (showDate ?? formatShorthand(shift.startMin, shift.endMin)) : (employee?.name ?? 'Open shift')}
+          </span>
           <span className="text-xs text-slate-500">{shift.position}</span>
         </div>
         <div className="text-xs text-slate-600">
-          {showDate && <span className="mr-1.5">{showDate} ·</span>}
+          {showDate && !hideName && <span className="mr-1.5">{showDate} ·</span>}
           {formatRange(shift.startMin, shift.endMin)}
           <span className="text-slate-400"> · {formatDuration(shift.startMin, shift.endMin)}</span>
           {shift.notes && <span className="text-slate-400"> · {shift.notes}</span>}

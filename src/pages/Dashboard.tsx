@@ -1,4 +1,4 @@
-import { ArrowLeftRight, CalendarDays, Clock, Users } from 'lucide-react'
+import { ArrowLeftRight, CalendarDays, Clock, List, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -12,6 +12,8 @@ import { useData } from '../data/DataContext'
 import { visibleOffersFor } from '../data/offers'
 import type { Shift } from '../types'
 import { addDays, dateRange, formatDateShort, startOfWeek, todayKey } from '../utils/time'
+
+const UPCOMING_VIEW_KEY = 'shift-manager:dashboard:upcoming-view'
 
 function greeting() {
   const h = new Date().getHours()
@@ -38,6 +40,13 @@ export function Dashboard() {
   const { shifts, offers, employees, me, isAdmin, employeeById } = useData()
   const [draft, setDraft] = useState<ShiftDraft | null>(null)
   const [detail, setDetail] = useState<Shift | null>(null)
+  const [upcomingView, setUpcomingView] = useState<'list' | 'calendar'>(() =>
+    localStorage.getItem(UPCOMING_VIEW_KEY) === 'calendar' ? 'calendar' : 'list',
+  )
+  const setView = (v: 'list' | 'calendar') => {
+    setUpcomingView(v)
+    localStorage.setItem(UPCOMING_VIEW_KEY, v)
+  }
 
   const today = todayKey()
   const week = useMemo(() => dateRange(startOfWeek(today), 7), [today])
@@ -51,6 +60,11 @@ export function Dashboard() {
         .filter((s) => s.employeeId === me.id && s.date >= today && s.date <= addDays(today, 14))
         .sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin)
     : []
+  const upcomingDays = useMemo(() => dateRange(today, 7), [today])
+  const myOfferedIds = useMemo(
+    () => new Set(offers.filter((o) => o.status === 'open').map((o) => o.shiftId)),
+    [offers],
+  )
   const openToday = todayShifts.filter((s) => s.status === 'open').length
   const name = me?.name ?? user?.fullName ?? user?.email?.split('@')[0] ?? ''
 
@@ -116,11 +130,44 @@ export function Dashboard() {
           <section>
             <div className="mb-2 flex items-center justify-between">
               <h2 className="font-semibold">My upcoming shifts</h2>
-              <Link to="/schedule" className="text-sm text-slate-600 hover:underline">
-                Schedule →
-              </Link>
+              <div className="flex items-center gap-3">
+                <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5" role="tablist" aria-label="Upcoming shifts view">
+                  {(
+                    [
+                      { v: 'list', icon: List, label: 'List' },
+                      { v: 'calendar', icon: CalendarDays, label: 'Calendar' },
+                    ] as const
+                  ).map(({ v, icon: Icon, label }) => (
+                    <button
+                      key={v}
+                      type="button"
+                      role="tab"
+                      aria-selected={upcomingView === v}
+                      onClick={() => setView(v)}
+                      className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${
+                        upcomingView === v ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Icon size={13} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <Link to="/schedule" className="text-sm text-slate-600 hover:underline">
+                  Schedule →
+                </Link>
+              </div>
             </div>
-            {myUpcoming.length === 0 ? (
+            {upcomingView === 'calendar' ? (
+              <TimelineGrid
+                days={upcomingDays}
+                shifts={myUpcoming.filter((s) => upcomingDays.includes(s.date))}
+                employees={employees}
+                hideNames
+                offeredShiftIds={myOfferedIds}
+                onShiftClick={(s) => setDetail(s)}
+              />
+            ) : myUpcoming.length === 0 ? (
               <EmptyState title="No upcoming shifts in the next two weeks" />
             ) : (
               <div className="space-y-1.5">
@@ -129,6 +176,7 @@ export function Dashboard() {
                     key={s.id}
                     shift={s}
                     employee={employeeById(s.employeeId)}
+                    hideName
                     showDate={s.date === today ? 'Today' : formatDateShort(s.date)}
                     onClick={() => setDetail(s)}
                     trailing={

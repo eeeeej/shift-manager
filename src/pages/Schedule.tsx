@@ -118,6 +118,7 @@ export function Schedule() {
         <TimelineGrid
           days={range}
           shifts={visible}
+          hideNames={!!employeeFilter}
           employees={employees}
           highlightEmployeeId={me?.id}
           offeredShiftIds={offeredShiftIds}
