@@ -43,7 +43,14 @@ export function Register() {
 
   if (step === 'otp') {
     return (
-      <AuthShell title="Check your email" subtitle={`We sent a 6-digit code to ${email}.`}>
+      <AuthShell
+        title="Check your email"
+        subtitle={
+          isDemoMode
+            ? `We sent a 6-digit code to ${email}.`
+            : `We sent a confirmation link to ${email}. Click it to finish signing up — or, if the email contains a code, enter it below.`
+        }
+      >
         <form onSubmit={submitOtp} className="space-y-3">
           <div>
             <label className="label">Verification code</label>
