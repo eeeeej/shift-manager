@@ -1,28 +1,16 @@
 import { Copy } from 'lucide-react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { Employee, Position, Shift, ShiftInput } from '../types'
-import { shiftColor } from '../utils/colors'
-import { addDays, formatShorthand, fromDateKey, startOfWeek, todayKey, WEEKDAYS } from '../utils/time'
-import { QuickAddPopover } from './QuickAddPopover'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import type { Employee, Shift } from '../types'
+import { addDays, fromDateKey, startOfWeek, todayKey, WEEKDAYS } from '../utils/time'
+import { DayCell, DayPartToggle, groupByDay, useDayCellState, type DayCellCallbacks } from './DayCell'
 
-interface Props {
+interface Props extends DayCellCallbacks {
   /** Consecutive months to render, each as YYYY-MM-01. */
   months: string[]
   shifts: Shift[]
   employees: Employee[]
-  hideNames?: boolean
-  highlightEmployeeId?: string | null
-  offeredShiftIds?: Set<string>
-  onShiftClick?: (shift: Shift) => void
-  onDayClick?: (date: string) => void
-  /** Open the full shift editor (admin). Enables the quick-add popover and drag-to-move. */
-  onAddClick?: (draft: Partial<ShiftInput> & { date: string }) => void
-  onQuickAdd?: (input: ShiftInput) => Promise<void>
-  /** Drop a chip on another day: move it, or duplicate when `copy` (Shift held). */
-  onMoveShift?: (shift: Shift, date: string, copy: boolean) => void
   /** Copy an entire week (Sunday key) — shows a gutter button per week row. */
   onCopyWeek?: (weekStart: string) => void
-  defaultPosition?: Position
   /** Called when the user scrolls near the top / bottom; parent prepends / appends a month. */
   onNeedBefore: () => void
   onNeedAfter: () => void
@@ -31,9 +19,6 @@ interface Props {
   /** Bump `key` to scroll `month` into view. */
   scrollTarget: { month: string; key: number } | null
 }
-
-/** Spreadsheet divider between the day and evening crews. */
-const DIVIDER_MIN = 16 * 60
 
 export function monthKey(date: string): string {
   return `${date.slice(0, 7)}-01`
@@ -68,43 +53,16 @@ export function MonthGrid({
   months,
   shifts,
   employees,
-  hideNames,
-  highlightEmployeeId,
-  offeredShiftIds,
-  onShiftClick,
-  onDayClick,
-  onAddClick,
-  onQuickAdd,
-  onMoveShift,
   onCopyWeek,
-  defaultPosition = 'Server',
   onNeedBefore,
   onNeedAfter,
   onVisibleMonth,
   scrollTarget,
+  ...cellProps
 }: Props) {
   const today = todayKey()
-  const empById = useMemo(() => new Map(employees.map((e) => [e.id, e])), [employees])
-  const byDay = useMemo(() => {
-    const m = new Map<string, Shift[]>()
-    for (const s of shifts) {
-      const list = m.get(s.date) ?? []
-      list.push(s)
-      m.set(s.date, list)
-    }
-    for (const list of m.values()) list.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin)
-    return m
-  }, [shifts])
-  const [quickAdd, setQuickAdd] = useState<string | null>(null)
-  const [dragOver, setDragOver] = useState<string | null>(null)
-  const dragging = useRef<Shift | null>(null)
-  const editable = !!onAddClick
-  const [showDay, setShowDay] = useState(true)
-  const [showEvening, setShowEvening] = useState(true)
-  const toggle = (part: 'day' | 'evening') => {
-    if (part === 'day') setShowDay((v) => !v || !showEvening)
-    else setShowEvening((v) => !v || !showDay)
-  }
+  const byDay = useMemo(() => groupByDay(shifts), [shifts])
+  const state = useDayCellState()
 
   const scroller = useRef<HTMLDivElement>(null)
   const blocks = useRef(new Map<string, HTMLElement>())
@@ -162,169 +120,25 @@ export function MonthGrid({
     if (el && b) el.scrollTop = b.offsetTop
   }, [scrollTarget, months])
 
-  const cell = (month: string, d: string) => {
-    const inMonth = fromDateKey(d).getMonth() === fromDateKey(month).getMonth()
-    const dayShifts = inMonth ? (byDay.get(d) ?? []) : []
-    const isToday = d === today
-    const dayPart = showDay ? dayShifts.filter((s) => s.startMin < DIVIDER_MIN) : []
-    const eveningPart = showEvening ? dayShifts.filter((s) => s.startMin >= DIVIDER_MIN) : []
-    const chip = (s: Shift) => {
-      const emp = s.employeeId ? empById.get(s.employeeId) : undefined
-      const open = !emp
-      const mine = highlightEmployeeId && s.employeeId === highlightEmployeeId
-      const label =
-        hideNames || open
-          ? formatShorthand(s.startMin, s.endMin)
-          : `${emp.name.split(' ')[0]} ${formatShorthand(s.startMin, s.endMin)}`
-      return (
-        <button
-          key={s.id}
-          title={`${emp?.name ?? 'OPEN'} · ${formatShorthand(s.startMin, s.endMin)} · ${s.position}${
-            onMoveShift ? ' — drag to move, Shift+drag to copy' : ''
-          }`}
-          draggable={!!onMoveShift}
-          onDragStart={(e) => {
-            dragging.current = s
-            e.dataTransfer.effectAllowed = 'copyMove'
-            e.dataTransfer.setData('text/plain', s.id)
-          }}
-          onDragEnd={() => {
-            dragging.current = null
-            setDragOver(null)
-          }}
-          onClick={(e) => {
-            e.stopPropagation()
-            onShiftClick?.(s)
-          }}
-          className={`flex w-full items-center gap-1 truncate rounded px-1 py-px text-left text-[11px] leading-4 ${
-            open ? 'border border-dashed border-amber-400 bg-amber-50 text-amber-800' : 'text-slate-800'
-          } ${mine ? 'ring-1 ring-slate-900' : ''} ${onMoveShift ? 'cursor-grab active:cursor-grabbing' : ''}`}
-          style={open ? undefined : { backgroundColor: `${shiftColor(s, emp)}22` }}
-        >
-          {!open && <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: shiftColor(s, emp) }} />}
-          <span className="truncate">{open ? `OPEN ${label}` : label}</span>
-          {offeredShiftIds?.has(s.id) && (
-            <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" title="Up for trade" />
-          )}
-        </button>
-      )
-    }
-    const dayCount = dayShifts.filter((s) => s.startMin < DIVIDER_MIN).length
-    const eveCount = dayShifts.length - dayCount
-    const openCount = dayShifts.filter((s) => !s.employeeId).length
-    const droppable = !!onMoveShift && inMonth
-    return (
-      <div
-        key={d}
-        className={`group relative min-h-[7rem] border-r border-slate-200 p-1 last:border-r-0 ${inMonth ? 'bg-white' : 'bg-slate-50/60'} ${
-          onDayClick ? 'cursor-pointer hover:bg-slate-50' : ''
-        } ${dragOver === d ? 'bg-sky-50 ring-2 ring-inset ring-sky-400' : ''}`}
-        onClick={() => onDayClick?.(d)}
-        onDragOver={
-          droppable
-            ? (e) => {
-                if (!dragging.current) return
-                e.preventDefault()
-                e.dataTransfer.dropEffect = e.shiftKey ? 'copy' : 'move'
-                if (dragOver !== d) setDragOver(d)
-              }
-            : undefined
-        }
-        onDragLeave={droppable ? () => setDragOver((v) => (v === d ? null : v)) : undefined}
-        onDrop={
-          droppable
-            ? (e) => {
-                e.preventDefault()
-                const s = dragging.current
-                dragging.current = null
-                setDragOver(null)
-                if (!s) return
-                const copy = e.shiftKey
-                if (s.date === d && !copy) return
-                onMoveShift?.(s, d, copy)
-              }
-            : undefined
-        }
-      >
-        {quickAdd === d && onQuickAdd && onAddClick && (
-          <QuickAddPopover
-            date={d}
-            employees={employees}
-            defaultPosition={defaultPosition}
-            onSubmit={onQuickAdd}
-            onMore={(draft) => {
-              setQuickAdd(null)
-              onAddClick({ ...draft, date: d })
-            }}
-            onClose={() => setQuickAdd(null)}
-          />
-        )}
-        <div className="mb-1 flex items-center justify-between px-0.5">
-          <span
-            className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-              isToday ? 'bg-slate-900 text-white' : inMonth ? 'text-slate-700' : 'text-slate-400'
-            }`}
-          >
-            {fromDateKey(d).getDate()}
-          </span>
-          <span className="flex items-center gap-1 text-[10px] text-slate-400">
-            {dayShifts.length > 0 && (
-              <span title={`${dayCount} before 4pm · ${eveCount} from 4pm${openCount ? ` · ${openCount} open` : ''}`}>
-                {dayCount} day · {eveCount} eve
-                {openCount > 0 && <span className="ml-1 font-semibold text-amber-600">{openCount} open</span>}
-              </span>
-            )}
-            {editable && (
-              <button
-                className={`rounded px-1 text-slate-500 hover:bg-slate-200 ${quickAdd === d ? 'inline bg-slate-200' : 'hidden group-hover:inline'}`}
-                title="Add shift"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (onQuickAdd) setQuickAdd(quickAdd === d ? null : d)
-                  else onAddClick?.({ date: d })
-                }}
-              >
-                +
-              </button>
-            )}
-          </span>
-        </div>
-        <div className="space-y-0.5">
-          {dayPart.map(chip)}
-          {showDay && showEvening && dayShifts.length > 0 && (
-            <div className="flex items-center gap-1 py-0.5 text-[9px] uppercase tracking-wide text-slate-400">
-              <span className="h-px flex-1 bg-slate-300" />
-              4pm
-              <span className="h-px flex-1 bg-slate-300" />
-            </div>
-          )}
-          {eveningPart.map(chip)}
-        </div>
-      </div>
-    )
-  }
+  const cell = (month: string, d: string) => (
+    <DayCell
+      key={d}
+      date={d}
+      shifts={byDay.get(d) ?? []}
+      label={fromDateKey(d).getDate()}
+      muted={fromDateKey(d).getMonth() !== fromDateKey(month).getMonth()}
+      isToday={d === today}
+      employees={employees}
+      state={state}
+      className="border-r border-slate-200 last:border-r-0"
+      {...cellProps}
+    />
+  )
 
   const gutter = !!onCopyWeek
   return (
     <div className="card overflow-hidden">
-      <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 text-xs">
-        <span className="text-slate-500">Show</span>
-        {(
-          [
-            ['day', 'Day (before 4pm)', showDay],
-            ['evening', 'Evening (4pm on)', showEvening],
-          ] as const
-        ).map(([part, label, on]) => (
-          <button
-            key={part}
-            aria-pressed={on}
-            onClick={() => toggle(part)}
-            className={`chip border px-2.5 py-1 ${on ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <DayPartToggle state={state} />
       <div
         className={`grid ${gutter ? 'grid-cols-[1.75rem_repeat(7,minmax(0,1fr))]' : 'grid-cols-7'} border-b border-slate-200 bg-slate-50 text-center text-xs font-medium uppercase tracking-wide text-slate-500`}
       >

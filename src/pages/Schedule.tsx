@@ -5,6 +5,7 @@ import { ShiftRow } from '../components/ShiftCard'
 import { ShiftDetailModal } from '../components/ShiftDetailModal'
 import { ShiftModal, type ShiftDraft } from '../components/ShiftModal'
 import { addMonths, formatMonth, MonthGrid, monthKey, monthRange } from '../components/MonthGrid'
+import { DayList } from '../components/DayList'
 import { TimelineGrid } from '../components/TimelineGrid'
 import { EmptyState, PageHeader } from '../components/ui'
 import { useData } from '../data/DataContext'
@@ -43,6 +44,7 @@ function FilterChip({
 }
 
 const VIEW_KEY = 'shift-manager:schedule:view'
+const LAYOUT_KEY = 'shift-manager:schedule:layout'
 
 export function Schedule() {
   const { shifts, employees, offers, isAdmin, me, employeeById, createShift, updateShift, createShifts, deleteShifts } =
@@ -57,9 +59,17 @@ export function Schedule() {
     setViewState(v)
     if (isAdmin) localStorage.setItem(VIEW_KEY, v)
   }
-  // Staff land on today's schedule; managers get the full week.
+  // Multi-day ranges start on today rather than snapping to Sunday.
   const [days, setDays] = useState(isAdmin ? 7 : 1)
-  const [start, setStart] = useState(() => (isAdmin ? startOfWeek(todayKey()) : todayKey()))
+  const [start, setStart] = useState(todayKey)
+  // Desktop multi-day: time axis or condensed chip columns.
+  const [layout, setLayoutState] = useState<'timeline' | 'list'>(() =>
+    localStorage.getItem(LAYOUT_KEY) === 'list' ? 'list' : 'timeline',
+  )
+  const setLayout = (l: 'timeline' | 'list') => {
+    setLayoutState(l)
+    localStorage.setItem(LAYOUT_KEY, l)
+  }
   const isMonth = view === 'month'
   const [months, setMonths] = useState<string[]>(() => {
     const m = monthKey(todayKey())
@@ -158,21 +168,16 @@ export function Schedule() {
   }
   const goToday = () => {
     if (isMonth) jumpToMonth(monthKey(todayKey()))
-    else setStart(days !== 7 ? todayKey() : startOfWeek(todayKey()))
+    else setStart(todayKey())
   }
   const changeView = (v: 'week' | 'month') => {
     setView(v)
     if (v === 'month') jumpToMonth(monthKey(start))
-    else setStart(days === 7 ? startOfWeek(start) : start)
   }
   const openDay = (d: string) => {
     setView('week')
     setDays(1)
     setStart(d)
-  }
-  const changeDays = (n: number) => {
-    setDays(n)
-    setStart(n === 7 ? startOfWeek(start) : start)
   }
 
   const openShift = (shift: Shift) => (isAdmin ? setDraft({ ...shift }) : setDetail(shift))
@@ -250,13 +255,28 @@ export function Schedule() {
             {[1, 2, 3, 4, 5, 6, 7].map((n) => (
               <button
                 key={n}
-                onClick={() => changeDays(n)}
+                onClick={() => setDays(n)}
                 className={`px-2.5 py-1.5 ${days === n ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
               >
                 {n}
               </button>
             ))}
             <span className="hidden self-center px-2 text-xs text-slate-500 sm:inline">days</span>
+          </div>
+        )}
+
+        {isDesktop && !isMonth && days > 1 && (
+          <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white text-sm">
+            {(['timeline', 'list'] as const).map((l) => (
+              <button
+                key={l}
+                onClick={() => setLayout(l)}
+                aria-pressed={layout === l}
+                className={`px-2.5 py-1.5 capitalize ${layout === l ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+              >
+                {l}
+              </button>
+            ))}
           </div>
         )}
       </div>
@@ -312,6 +332,22 @@ export function Schedule() {
           onQuickAdd={isAdmin ? createShift : undefined}
           onMoveShift={isAdmin ? moveShift : undefined}
           onCopyWeek={isAdmin ? setCopying : undefined}
+          defaultPosition={position || 'Server'}
+        />
+      ) : (isDesktop && days > 1 && layout === 'list') || (!isDesktop && (isMonth || days > 1)) ? (
+        <DayList
+          days={range}
+          stacked={!isDesktop}
+          shifts={visible}
+          employees={employees}
+          hideNames={employeeFilter.size === 1}
+          highlightEmployeeId={me?.id}
+          offeredShiftIds={offeredShiftIds}
+          onShiftClick={openShift}
+          onDayClick={isDesktop ? openDay : undefined}
+          onAddClick={isAdmin ? (d) => setDraft({ position: position || 'Server', ...d }) : undefined}
+          onQuickAdd={isAdmin ? createShift : undefined}
+          onMoveShift={isAdmin && isDesktop ? moveShift : undefined}
           defaultPosition={position || 'Server'}
         />
       ) : isDesktop ? (
