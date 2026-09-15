@@ -72,11 +72,17 @@ export function MonthGrid({
   const firstMonth = months[0]
   const prevFirst = useRef(firstMonth)
   const prevHeight = useRef(0)
+  // Programmatic scroll positions, so onScroll can tell a user scroll from ours.
+  const lastSet = useRef(0)
+  const setScroll = (el: HTMLElement, top: number) => {
+    el.scrollTop = top
+    lastSet.current = el.scrollTop
+  }
   useLayoutEffect(() => {
     const el = scroller.current
     if (!el) return
     if (prevFirst.current !== firstMonth && firstMonth < prevFirst.current) {
-      el.scrollTop += el.scrollHeight - prevHeight.current
+      setScroll(el, el.scrollTop + el.scrollHeight - prevHeight.current)
     }
     prevFirst.current = firstMonth
     prevHeight.current = el.scrollHeight
@@ -103,6 +109,7 @@ export function MonthGrid({
   const updateVisible = () => {
     const el = scroller.current
     if (!el) return
+    if (Math.abs(el.scrollTop - lastSet.current) > 2) pinned.current = false
     const top = el.getBoundingClientRect().top + 8
     let current = months[0]
     for (const m of months) {
@@ -113,12 +120,20 @@ export function MonthGrid({
   }
   useEffect(updateVisible, [months]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
+  // Stay pinned to the target month while months/shifts load and reflow, until the user scrolls.
+  const pinned = useRef(false)
+  const handledKey = useRef<number | null>(null)
+  useLayoutEffect(() => {
     if (!scrollTarget) return
+    if (handledKey.current !== scrollTarget.key) {
+      handledKey.current = scrollTarget.key
+      pinned.current = true
+    }
+    if (!pinned.current) return
     const el = scroller.current
     const b = blocks.current.get(scrollTarget.month)
-    if (el && b) el.scrollTop = b.offsetTop
-  }, [scrollTarget, months])
+    if (el && b) setScroll(el, b.offsetTop)
+  }, [scrollTarget, months, shifts])
 
   const cell = (month: string, d: string) => (
     <DayCell

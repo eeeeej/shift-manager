@@ -1,11 +1,12 @@
-import { ChevronLeft, ChevronRight, Copy, Plus } from 'lucide-react'
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronLeft, ChevronRight, Copy, Plus } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CopyWeekModal, type CopyResult } from '../components/CopyWeekModal'
 import { ShiftRow } from '../components/ShiftCard'
 import { ShiftDetailModal } from '../components/ShiftDetailModal'
 import { ShiftModal, type ShiftDraft } from '../components/ShiftModal'
 import { addMonths, formatMonth, MonthGrid, monthKey, monthRange } from '../components/MonthGrid'
 import { DayList } from '../components/DayList'
+import { formatWeek, WeekFeed } from '../components/WeekFeed'
 import { TimelineGrid } from '../components/TimelineGrid'
 import { EmptyState, PageHeader } from '../components/ui'
 import { useData } from '../data/DataContext'
@@ -43,6 +44,84 @@ function FilterChip({
   )
 }
 
+/** Staff filter chips tucked behind one "Staff" chip; opens a popover of color-coded, multi-select chips. */
+function StaffPicker({
+  employees,
+  selected,
+  onToggle,
+  onClear,
+}: {
+  employees: { id: string; name: string; color: string }[]
+  selected: Set<string>
+  onToggle: (id: string) => void
+  onClear: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const picked = employees.filter((e) => selected.has(e.id))
+  return (
+    <div ref={root} className="relative">
+      <button
+        aria-expanded={open}
+        aria-haspopup="true"
+        onClick={() => setOpen((o) => !o)}
+        className={`chip border py-1 transition ${
+          picked.length ? 'border-transparent bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+        }`}
+      >
+        {picked.length ? (
+          <>
+            <span className="mr-1.5 flex -space-x-1">
+              {picked.slice(0, 4).map((e) => (
+                <span
+                  key={e.id}
+                  className="h-2.5 w-2.5 rounded-full ring-1 ring-slate-900"
+                  style={{ backgroundColor: e.color }}
+                />
+              ))}
+            </span>
+            {picked.length === 1 ? picked[0].name.split(' ')[0] : `${picked.length} staff`}
+          </>
+        ) : (
+          'Staff'
+        )}
+        <ChevronDown size={12} className="ml-1" />
+      </button>
+      {open && (
+        <div
+          role="group"
+          aria-label="Filter by staff"
+          className="absolute left-0 top-full z-30 mt-1 flex w-72 max-w-[calc(100vw-2rem)] flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 shadow-lg sm:w-96"
+        >
+          {employees.map((e) => (
+            <FilterChip key={e.id} active={selected.has(e.id)} color={e.color} onClick={() => onToggle(e.id)}>
+              {e.name.split(' ')[0]}
+            </FilterChip>
+          ))}
+          {picked.length > 0 && (
+            <button className="chip w-full justify-center text-slate-500 hover:text-slate-800" onClick={onClear}>
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const VIEW_KEY = 'shift-manager:schedule:view'
 const LAYOUT_KEY = 'shift-manager:schedule:layout'
 type View = 'month' | 'week' | 'days'
@@ -74,6 +153,32 @@ export function Schedule() {
     localStorage.setItem(LAYOUT_KEY, l)
   }
   const isMonth = view === 'month'
+  // Desktop week list is a continuous feed of weeks, like the month grid.
+  const isWeekFeed = isDesktop && view === 'week' && layout === 'list'
+  const [weeks, setWeeks] = useState<string[]>(() => {
+    const w = startOfWeek(todayKey())
+    return [addDays(w, -7), w, addDays(w, 7), addDays(w, 14)]
+  })
+  const [visibleWeek, setVisibleWeek] = useState(() => startOfWeek(todayKey()))
+  const [weekScrollTarget, setWeekScrollTarget] = useState<{ week: string; key: number } | null>(() => ({
+    week: startOfWeek(todayKey()),
+    key: 0,
+  }))
+  const needWeekBefore = useCallback(() => setWeeks((ws) => [addDays(ws[0], -7), ...ws]), [])
+  const needWeekAfter = useCallback(() => setWeeks((ws) => [...ws, addDays(ws[ws.length - 1], 7)]), [])
+  const jumpToWeek = (w: string) => {
+    setWeeks((ws) => {
+      let next = ws
+      while (w < next[0]) next = [addDays(next[0], -7), ...next]
+      while (w > next[next.length - 1]) next = [...next, addDays(next[next.length - 1], 7)]
+      return next
+    })
+    setWeekScrollTarget((t) => ({ week: w, key: (t?.key ?? 0) + 1 }))
+  }
+  // Keep `start` in step with the week in view so switching views lands nearby.
+  useEffect(() => {
+    if (isWeekFeed) setStart(visibleWeek)
+  }, [isWeekFeed, visibleWeek])
   const [months, setMonths] = useState<string[]>(() => {
     const m = monthKey(todayKey())
     return [m, addMonths(m, 1)]
@@ -119,6 +224,7 @@ export function Schedule() {
     setCopying(null)
     setLastCopy(r)
     if (isMonth) jumpToMonth(monthKey(r.targetStart))
+    else if (isWeekFeed) jumpToWeek(r.targetStart)
     else setStart(r.targetStart)
   }
   const moveShift = (s: Shift, date: string, copy: boolean) => {
@@ -142,11 +248,17 @@ export function Schedule() {
   }
 
   const range = useMemo(() => {
+    if (isWeekFeed) return dateRange(weeks[0], weeks.length * 7)
     if (!isMonth) return dateRange(start, days)
     const s = monthRange(months[0]).start
     const end = monthRange(months[months.length - 1]).end
     return dateRange(s, Math.round((fromDateKey(end).getTime() - fromDateKey(s).getTime()) / 86400000) + 1)
-  }, [start, days, isMonth, months])
+  }, [start, days, isMonth, months, isWeekFeed, weeks])
+  /** The week/day run the header, Copy week and + Shift act on (feed views scroll, so use the visible one). */
+  const focusRange = useMemo(
+    () => (isWeekFeed ? dateRange(visibleWeek, 7) : range),
+    [isWeekFeed, visibleWeek, range],
+  )
   const visible = useMemo(
     () =>
       shifts.filter(
@@ -178,17 +290,21 @@ export function Schedule() {
 
   const step = (dir: 1 | -1) => {
     if (isMonth) jumpToMonth(addMonths(visibleMonth, dir))
+    else if (isWeekFeed) jumpToWeek(addDays(visibleWeek, dir * 7))
     else setStart(addDays(start, dir * days))
   }
   const goToday = () => {
     if (isMonth) jumpToMonth(monthKey(todayKey()))
+    else if (isWeekFeed) jumpToWeek(startOfWeek(todayKey()))
     else setStart(view === 'week' ? startOfWeek(todayKey()) : todayKey())
   }
   const changeView = (v: View) => {
     setView(v)
     if (v === 'month') jumpToMonth(monthKey(start))
-    else if (v === 'week') setStart(startOfWeek(start))
-    else setStart(todayKey())
+    else if (v === 'week') {
+      setStart(startOfWeek(start))
+      jumpToWeek(startOfWeek(start))
+    } else setStart(todayKey())
   }
   const openDay = (d: string) => {
     setView('days')
@@ -198,11 +314,13 @@ export function Schedule() {
 
   const openShift = (shift: Shift) => (isAdmin ? setDraft({ ...shift }) : setDetail(shift))
 
-  const first = fromDateKey(range[0])
-  const last = fromDateKey(range[range.length - 1])
+  const first = fromDateKey(focusRange[0])
+  const last = fromDateKey(focusRange[focusRange.length - 1])
   const title = isMonth
     ? formatMonth(visibleMonth)
-    : days === 1
+    : isWeekFeed
+      ? formatWeek(visibleWeek)
+      : days === 1
       ? formatDateLong(range[0])
       : `${first.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${last.toLocaleDateString(
           undefined,
@@ -224,7 +342,7 @@ export function Schedule() {
               {!isMonth && (
                 <button
                   className="btn-secondary"
-                  onClick={() => setCopying(startOfWeek(range[0]))}
+                  onClick={() => setCopying(startOfWeek(focusRange[0]))}
                   title="Copy this week's shifts to another week"
                 >
                   <Copy size={16} /> Copy week
@@ -232,7 +350,7 @@ export function Schedule() {
               )}
               <button
                 className="btn-primary"
-                onClick={() => setDraft({ date: range[0], position: position || 'Server' })}
+                onClick={() => setDraft({ date: focusRange[0], position: position || 'Server' })}
               >
                 <Plus size={16} /> Shift
               </button>
@@ -317,17 +435,14 @@ export function Schedule() {
             Just me
           </FilterChip>
         )}
-        {isAdmin &&
-          scheduledEmployees.map((e) => (
-            <FilterChip
-              key={e.id}
-              active={employeeFilter.has(e.id)}
-              color={e.color}
-              onClick={() => toggleEmployee(e.id)}
-            >
-              {e.name.split(' ')[0]}
-            </FilterChip>
-          ))}
+        {isAdmin && scheduledEmployees.length > 0 && (
+          <StaffPicker
+            employees={scheduledEmployees}
+            selected={employeeFilter}
+            onToggle={toggleEmployee}
+            onClear={() => setEmployeeFilter(new Set())}
+          />
+        )}
       </div>
 
       {isDesktop && isMonth ? (
@@ -337,6 +452,26 @@ export function Schedule() {
           onNeedAfter={needAfter}
           onVisibleMonth={setVisibleMonth}
           scrollTarget={scrollTarget}
+          shifts={visible}
+          employees={employees}
+          hideNames={employeeFilter.size === 1}
+          highlightEmployeeId={me?.id}
+          offeredShiftIds={offeredShiftIds}
+          onShiftClick={openShift}
+          onDayClick={openDay}
+          onAddClick={isAdmin ? (d) => setDraft({ position: position || 'Server', ...d }) : undefined}
+          onQuickAdd={isAdmin ? createShift : undefined}
+          onMoveShift={isAdmin ? moveShift : undefined}
+          onCopyWeek={isAdmin ? setCopying : undefined}
+          defaultPosition={position || 'Server'}
+        />
+      ) : isWeekFeed ? (
+        <WeekFeed
+          weeks={weeks}
+          onNeedBefore={needWeekBefore}
+          onNeedAfter={needWeekAfter}
+          onVisibleWeek={setVisibleWeek}
+          scrollTarget={weekScrollTarget}
           shifts={visible}
           employees={employees}
           hideNames={employeeFilter.size === 1}
