@@ -1,0 +1,105 @@
+import { Link2, Mail, Pencil, Phone, Plus, Send } from 'lucide-react'
+import { useState } from 'react'
+import { EmployeeModal } from '../components/EmployeeModal'
+import { Avatar, EmptyState, PageHeader } from '../components/ui'
+import { useData } from '../data/DataContext'
+import type { Employee } from '../types'
+
+export function Team() {
+  const { employees, inviteEmployee } = useData()
+  const [editing, setEditing] = useState<Employee | null | 'new'>(null)
+  const [showInactive, setShowInactive] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+
+  const list = employees
+    .filter((e) => showInactive || e.active)
+    .sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name))
+
+  const invite = async (e: Employee) => {
+    try {
+      await inviteEmployee(e.id)
+      setToast(`Invite sent to ${e.email}`)
+    } catch (err) {
+      setToast(err instanceof Error ? err.message : String(err))
+    }
+    setTimeout(() => setToast(null), 3000)
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Team"
+        subtitle={`${employees.filter((e) => e.active).length} active staff`}
+        actions={
+          <>
+            <label className="flex items-center gap-1.5 text-sm text-slate-600">
+              <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
+              Show inactive
+            </label>
+            <button className="btn-primary" onClick={() => setEditing('new')}>
+              <Plus size={16} /> Employee
+            </button>
+          </>
+        }
+      />
+
+      {toast && <div className="mb-3 rounded-lg bg-slate-900 px-4 py-2 text-sm text-white">{toast}</div>}
+
+      {list.length === 0 ? (
+        <EmptyState title="No employees yet" hint="Add your staff to start scheduling." />
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {list.map((e) => (
+            <div key={e.id} className={`card flex gap-3 p-3 ${e.active ? '' : 'opacity-60'}`}>
+              <Avatar name={e.name} color={e.color} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate font-medium">{e.name}</span>
+                  {e.userId ? (
+                    <span className="chip bg-emerald-100 text-emerald-800" title="Linked to a login">
+                      <Link2 size={10} className="mr-1" /> linked
+                    </span>
+                  ) : (
+                    <span className="chip bg-slate-100 text-slate-500">no login</span>
+                  )}
+                  {!e.active && <span className="chip bg-slate-100 text-slate-500">inactive</span>}
+                </div>
+                <div className="mt-0.5 flex flex-wrap gap-1">
+                  {e.positions.map((p) => (
+                    <span key={p} className="chip bg-slate-100 text-slate-700">
+                      {p}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-1.5 space-y-0.5 text-xs text-slate-500">
+                  {e.email && (
+                    <div className="flex items-center gap-1 truncate">
+                      <Mail size={12} /> {e.email}
+                    </div>
+                  )}
+                  {e.phone && (
+                    <div className="flex items-center gap-1">
+                      <Phone size={12} /> {e.phone}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <button className="btn-ghost p-1.5" onClick={() => setEditing(e)} title="Edit">
+                  <Pencil size={15} />
+                </button>
+                {e.email && !e.userId && (
+                  <button className="btn-ghost p-1.5" onClick={() => invite(e)} title="Send login invite">
+                    <Send size={15} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {editing && <EmployeeModal employee={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+    </div>
+  )
+}
