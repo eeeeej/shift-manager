@@ -135,6 +135,11 @@ export function Schedule() {
       ),
     [shifts, range, position, employeeFilter],
   )
+  /** Positions that have a shift in the displayed range (filter chips). */
+  const scheduledPositions = useMemo(() => {
+    const used = new Set(shifts.filter((s) => range.includes(s.date)).map((s) => s.position))
+    return POSITIONS.filter((p) => used.has(p) || p === position)
+  }, [shifts, range, position])
   /** Employees with a shift in the displayed range (admin filter chips). */
   const scheduledEmployees = useMemo(() => {
     const ids = new Set(
@@ -254,20 +259,18 @@ export function Schedule() {
             <span className="hidden self-center px-2 text-xs text-slate-500 sm:inline">days</span>
           </div>
         )}
-
-        <select
-          className="input w-auto"
-          value={position}
-          onChange={(e) => setPosition(e.target.value as Position | '')}
-        >
-          <option value="">All positions</option>
-          {POSITIONS.map((p) => (
-            <option key={p}>{p}</option>
-          ))}
-        </select>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <FilterChip active={!position} onClick={() => setPosition('')}>
+          All positions
+        </FilterChip>
+        {scheduledPositions.map((p) => (
+          <FilterChip key={p} active={position === p} onClick={() => setPosition(position === p ? '' : p)}>
+            {p}
+          </FilterChip>
+        ))}
+        <span className="mx-1 h-4 w-px bg-slate-300" aria-hidden />
         <FilterChip active={employeeFilter.size === 0} onClick={() => setEmployeeFilter(new Set())}>
           Everyone
         </FilterChip>

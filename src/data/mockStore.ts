@@ -3,7 +3,7 @@ import type { DataStore, OfferInput, Snapshot } from './store'
 import { SEED_EMPLOYEES, SEED_OFFERS, SEED_SHIFTS } from './seed'
 import { setDemoAccountRole } from '../auth/AuthContext'
 
-const KEY = 'shift-manager:demo:v1'
+const KEY = 'shift-manager:demo:v2'
 
 function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`

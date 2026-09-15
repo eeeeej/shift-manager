@@ -1,4 +1,4 @@
-export const POSITIONS = ['Server', 'Bartender', 'Host', 'Busser', 'Kitchen', 'Manager'] as const
+export const POSITIONS = ['Server', 'Bartender', 'Bar Back', 'Host', 'Busser', 'Kitchen', 'Manager'] as const
 export type Position = (typeof POSITIONS)[number]
 
 export type Role = 'admin' | 'employee'
