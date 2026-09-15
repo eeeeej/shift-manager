@@ -53,7 +53,7 @@ export function OfferCard({ offer }: { offer: ShiftOffer }) {
           <div>
             <div className="text-base sm:text-sm">
               <span className="font-semibold">{offerer?.name ?? 'Unknown'}</span>
-              <span className="text-slate-500"> is giving up</span>
+              <span className="text-slate-500"> is offering</span>
             </div>
             <div className="text-base font-medium sm:text-sm">
               {formatDateShort(shift.date)} · {formatRange(shift.startMin, shift.endMin)}
