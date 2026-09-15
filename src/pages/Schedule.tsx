@@ -261,7 +261,7 @@ export function Schedule() {
         )}
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
         <FilterChip active={!position} onClick={() => setPosition('')}>
           All positions
         </FilterChip>
@@ -270,7 +270,9 @@ export function Schedule() {
             {p}
           </FilterChip>
         ))}
-        <span className="mx-1 h-4 w-px bg-slate-300" aria-hidden />
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
         <FilterChip active={employeeFilter.size === 0} onClick={() => setEmployeeFilter(new Set())}>
           Everyone
         </FilterChip>
