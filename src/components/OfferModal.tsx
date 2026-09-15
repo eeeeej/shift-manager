@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useData } from '../data/DataContext'
 import type { Shift } from '../types'
+import { conflictMessage, confirmOverlap, findConflicts } from '../utils/conflicts'
 import { formatDateLong, formatRange } from '../utils/time'
 import { ShiftRow } from './ShiftCard'
-import { ErrorText, Modal } from './ui'
+import { ErrorText, Modal, WarnText } from './ui'
 
 /** Employee: put one of your shifts up for trade. */
 export function OfferModal({ shift, onClose }: { shift: Shift; onClose: () => void }) {
@@ -74,12 +75,15 @@ export function OfferModal({ shift, onClose }: { shift: Shift; onClose: () => vo
 
 /** Admin: reassign a shift directly. */
 export function ReassignModal({ shift, onClose }: { shift: Shift; onClose: () => void }) {
-  const { employees, employeeById, updateShift, offers, cancelOffer } = useData()
+  const { employees, employeeById, shifts, updateShift, offers, cancelOffer } = useData()
   const [employeeId, setEmployeeId] = useState(shift.employeeId ?? '')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const conflicts = findConflicts(shifts, employeeId, shift, shift.id)
+  const chosen = employeeId ? employeeById(employeeId) : undefined
 
   const submit = async () => {
+    if (!confirmOverlap(conflicts, chosen?.name)) return
     setBusy(true)
     setError(null)
     try {
@@ -122,6 +126,7 @@ export function ReassignModal({ shift, onClose }: { shift: Shift; onClose: () =>
             ))}
         </select>
         <p className="mt-1 text-xs text-slate-500">Any open offers on this shift will be cancelled.</p>
+        <WarnText className="mt-2">{conflictMessage(conflicts, chosen?.name)}</WarnText>
       </div>
       <div className="mt-3">
         <ErrorText>{error}</ErrorText>

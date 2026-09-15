@@ -53,6 +53,11 @@ export function ErrorText({ children }: { children: ReactNode }) {
   return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{children}</p>
 }
 
+export function WarnText({ children, className = '' }: { children: ReactNode; className?: string }) {
+  if (!children) return null
+  return <p className={`rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 ${className}`}>{children}</p>
+}
+
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
     <div className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center">

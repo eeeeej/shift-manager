@@ -33,6 +33,7 @@ import { EmptyState, PageHeader } from "../components/ui";
 import { useData } from "../data/DataContext";
 import { useIsDesktop } from "../hooks/useMediaQuery";
 import { POSITIONS, type Position, type Shift } from "../types";
+import { confirmOverlap, findConflicts } from "../utils/conflicts";
 import {
   addDays,
   dateRange,
@@ -311,6 +312,8 @@ export function Schedule() {
     else setStart(r.targetStart);
   };
   const moveShift = (s: Shift, date: string, copy: boolean) => {
+    if (!confirmOverlap(findConflicts(shifts, s.employeeId, { ...s, date }, s.id), employeeById(s.employeeId)?.name))
+      return;
     if (copy) {
       const { id: _id, ...rest } = s;
       void createShift({ ...rest, date });

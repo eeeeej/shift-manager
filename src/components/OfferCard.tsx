@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useData } from "../data/DataContext";
 import type { ShiftOffer } from "../types";
+import { conflictMessage, confirmOverlap, findConflicts } from "../utils/conflicts";
 import { formatDateShort, formatRange, todayKey } from "../utils/time";
 import { ReassignModal } from "./OfferModal";
-import { Avatar, ErrorText } from "./ui";
+import { Avatar, ErrorText, WarnText } from "./ui";
 
 export function OfferCard({ offer }: { offer: ShiftOffer }) {
   const {
@@ -36,21 +37,9 @@ export function OfferCard({ offer }: { offer: ShiftOffer }) {
     (!offer.targetEmployeeId || offer.targetEmployeeId === me.id) &&
     shift.date >= todayKey();
   const canCancel = offer.status === "open" && (isMine || isAdmin);
-  // Claiming isn't blocked when already scheduled that day, but the claimer is warned (and asked to confirm on overlap).
-  const sameDay = canClaim
-    ? shifts.filter((s) => s.employeeId === me!.id && s.date === shift.date)
-    : [];
-  const overlap = sameDay.some(
-    (s) => s.startMin < shift.endMin && shift.startMin < s.endMin,
-  );
+  const conflicts = findConflicts(shifts, canClaim ? me!.id : null, shift);
   const claim = () => {
-    if (
-      overlap &&
-      !confirm(
-        "This overlaps a shift you already have that day. Claim it anyway?",
-      )
-    )
-      return;
+    if (!confirmOverlap(conflicts)) return;
     void act(() => claimOffer(offer.id, me!.id));
   };
 
@@ -111,15 +100,7 @@ export function OfferCard({ offer }: { offer: ShiftOffer }) {
         </p>
       )}
 
-      {canClaim && sameDay.length > 0 && (
-        <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {overlap ? "Overlaps your " : "You're already on "}
-          {sameDay
-            .map((s) => formatRange(s.startMin, s.endMin))
-            .join(" and ")}{" "}
-          that day.
-        </p>
-      )}
+      <WarnText className="mt-2">{conflictMessage(conflicts)}</WarnText>
       {(canClaim || canCancel || isAdmin) && offer.status === "open" && (
         <div className="mt-3 flex flex-wrap gap-2 [&>button]:min-h-11 [&>button]:flex-1 sm:[&>button]:min-h-0 sm:[&>button]:flex-none">
           {canClaim && (

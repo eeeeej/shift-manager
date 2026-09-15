@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { useData } from '../data/DataContext'
 import { POSITIONS, type Employee, type Position, type ShiftInput } from '../types'
+import { conflictMessage, confirmOverlap, findConflicts } from '../utils/conflicts'
 import { CLOSE_MIN, formatDateShort, formatShorthand, parseShorthand } from '../utils/time'
+import { WarnText } from './ui'
 
 /** Common spreadsheet shifts, as [startMin, endMin]. */
 const PRESETS: [number, number][] = [
@@ -26,6 +29,7 @@ export function QuickAddPopover({
   onMore: (draft: Partial<ShiftInput>) => void
   onClose: () => void
 }) {
+  const { shifts } = useData()
   const [employeeId, setEmployeeId] = useState('')
   const [position, setPosition] = useState<Position>(defaultPosition)
   const [time, setTime] = useState('')
@@ -52,6 +56,7 @@ export function QuickAddPopover({
     .filter((e) => e.active && e.positions.includes(position))
     .sort((a, b) => a.name.localeCompare(b.name))
   const parsed = parseShorthand(time)
+  const dayConflicts = findConflicts(shifts, employeeId, { date, startMin: 0, endMin: 0 })
 
   const draft = (): Partial<ShiftInput> => ({
     date,
@@ -65,6 +70,7 @@ export function QuickAddPopover({
       setError('Enter a time like 10-4 or 4-CL')
       return
     }
+    if (!confirmOverlap(findConflicts(shifts, employeeId, { date, ...range }), emp?.name)) return
     setBusy(true)
     setError(null)
     try {
@@ -116,6 +122,7 @@ export function QuickAddPopover({
           </option>
         ))}
       </select>
+      <WarnText className="mb-1.5 !px-2 !py-1 !text-xs">{conflictMessage(dayConflicts, emp?.name)}</WarnText>
       <div className="mb-1.5 flex flex-wrap gap-1">
         {PRESETS.map(([s, e]) => (
           <button

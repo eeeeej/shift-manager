@@ -2,13 +2,14 @@ import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useData } from '../data/DataContext'
 import { POSITIONS, type Position, type ShiftInput } from '../types'
+import { conflictMessage, confirmOverlap, findConflicts } from '../utils/conflicts'
 import { CLOSE_MIN, minToTimeInput, parseShorthand, timeInputToMin } from '../utils/time'
-import { ErrorText, Modal } from './ui'
+import { ErrorText, Modal, WarnText } from './ui'
 
 export type ShiftDraft = Partial<ShiftInput> & { id?: string }
 
 export function ShiftModal({ draft, onClose }: { draft: ShiftDraft; onClose: () => void }) {
-  const { employees, createShift, updateShift, deleteShift } = useData()
+  const { employees, shifts, createShift, updateShift, deleteShift } = useData()
   const [employeeId, setEmployeeId] = useState<string>(draft.employeeId ?? '')
   const [position, setPosition] = useState<Position>(draft.position ?? 'Server')
   const [date, setDate] = useState(draft.date ?? '')
@@ -23,6 +24,13 @@ export function ShiftModal({ draft, onClose }: { draft: ShiftDraft; onClose: () 
   const isEdit = !!draft.id
   const active = employees.filter((e) => e.active || e.id === employeeId)
   const eligible = active.filter((e) => e.positions.includes(position))
+  const chosen = employees.find((e) => e.id === employeeId)
+  const conflicts = findConflicts(
+    shifts,
+    employeeId,
+    { date, startMin: timeInputToMin(start), endMin: timeInputToMin(end) },
+    draft.id,
+  )
 
   const applyShorthand = (text: string) => {
     setShorthand(text)
@@ -39,6 +47,7 @@ export function ShiftModal({ draft, onClose }: { draft: ShiftDraft; onClose: () 
     const endMin = timeInputToMin(end)
     if (!date) return setError('Pick a date')
     if (endMin <= startMin) return setError('End time must be after start time')
+    if (!confirmOverlap(conflicts, chosen?.name)) return
     const input: ShiftInput = {
       employeeId: employeeId || null,
       position,
@@ -123,6 +132,7 @@ export function ShiftModal({ draft, onClose }: { draft: ShiftDraft; onClose: () 
               </optgroup>
             )}
           </select>
+          <WarnText className="mt-2">{conflictMessage(conflicts, chosen?.name)}</WarnText>
         </div>
         <div>
           <label className="label">Date</label>
