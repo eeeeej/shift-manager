@@ -188,6 +188,7 @@ export function DayCell({
   const droppable = !!onMoveShift && !muted
   return (
     <div
+      data-date={date}
       className={`group relative min-h-[7rem] p-1 ${muted ? 'bg-slate-50/60' : 'bg-white'} ${
         onDayClick ? 'cursor-pointer hover:bg-slate-50' : ''
       } ${dragOver === date ? 'bg-sky-50 ring-2 ring-inset ring-sky-400' : ''} ${className}`}
