@@ -45,6 +45,9 @@ export function Layout({ children }: { children: ReactNode }) {
                 demo
               </button>
             )}
+            <span className="text-[10px] text-slate-400" title="Build">
+              {__BUILD_ID__}
+            </span>
           </div>
           <nav className="hidden items-center gap-1 md:flex">
             {nav.map((n) => (
