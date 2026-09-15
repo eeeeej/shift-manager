@@ -1,7 +1,9 @@
+import { Copy } from 'lucide-react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { Employee, Shift } from '../types'
+import type { Employee, Position, Shift, ShiftInput } from '../types'
 import { shiftColor } from '../utils/colors'
 import { addDays, formatShorthand, fromDateKey, startOfWeek, todayKey, WEEKDAYS } from '../utils/time'
+import { QuickAddPopover } from './QuickAddPopover'
 
 interface Props {
   /** Consecutive months to render, each as YYYY-MM-01. */
@@ -13,7 +15,14 @@ interface Props {
   offeredShiftIds?: Set<string>
   onShiftClick?: (shift: Shift) => void
   onDayClick?: (date: string) => void
-  onAddClick?: (date: string) => void
+  /** Open the full shift editor (admin). Enables the quick-add popover and drag-to-move. */
+  onAddClick?: (draft: Partial<ShiftInput> & { date: string }) => void
+  onQuickAdd?: (input: ShiftInput) => Promise<void>
+  /** Drop a chip on another day: move it, or duplicate when `copy` (Shift held). */
+  onMoveShift?: (shift: Shift, date: string, copy: boolean) => void
+  /** Copy an entire week (Sunday key) — shows a gutter button per week row. */
+  onCopyWeek?: (weekStart: string) => void
+  defaultPosition?: Position
   /** Called when the user scrolls near the top / bottom; parent prepends / appends a month. */
   onNeedBefore: () => void
   onNeedAfter: () => void
@@ -65,6 +74,10 @@ export function MonthGrid({
   onShiftClick,
   onDayClick,
   onAddClick,
+  onQuickAdd,
+  onMoveShift,
+  onCopyWeek,
+  defaultPosition = 'Server',
   onNeedBefore,
   onNeedAfter,
   onVisibleMonth,
@@ -82,6 +95,10 @@ export function MonthGrid({
     for (const list of m.values()) list.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin)
     return m
   }, [shifts])
+  const [quickAdd, setQuickAdd] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState<string | null>(null)
+  const dragging = useRef<Shift | null>(null)
+  const editable = !!onAddClick
   const [showDay, setShowDay] = useState(true)
   const [showEvening, setShowEvening] = useState(true)
   const toggle = (part: 'day' | 'evening') => {
@@ -162,14 +179,26 @@ export function MonthGrid({
       return (
         <button
           key={s.id}
-          title={`${emp?.name ?? 'OPEN'} · ${formatShorthand(s.startMin, s.endMin)} · ${s.position}`}
+          title={`${emp?.name ?? 'OPEN'} · ${formatShorthand(s.startMin, s.endMin)} · ${s.position}${
+            onMoveShift ? ' — drag to move, Shift+drag to copy' : ''
+          }`}
+          draggable={!!onMoveShift}
+          onDragStart={(e) => {
+            dragging.current = s
+            e.dataTransfer.effectAllowed = 'copyMove'
+            e.dataTransfer.setData('text/plain', s.id)
+          }}
+          onDragEnd={() => {
+            dragging.current = null
+            setDragOver(null)
+          }}
           onClick={(e) => {
             e.stopPropagation()
             onShiftClick?.(s)
           }}
           className={`flex w-full items-center gap-1 truncate rounded px-1 py-px text-left text-[11px] leading-4 ${
             open ? 'border border-dashed border-amber-400 bg-amber-50 text-amber-800' : 'text-slate-800'
-          } ${mine ? 'ring-1 ring-slate-900' : ''}`}
+          } ${mine ? 'ring-1 ring-slate-900' : ''} ${onMoveShift ? 'cursor-grab active:cursor-grabbing' : ''}`}
           style={open ? undefined : { backgroundColor: `${shiftColor(s, emp)}22` }}
         >
           {!open && <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: shiftColor(s, emp) }} />}
@@ -180,14 +209,56 @@ export function MonthGrid({
         </button>
       )
     }
+    const dayCount = dayShifts.filter((s) => s.startMin < DIVIDER_MIN).length
+    const eveCount = dayShifts.length - dayCount
+    const openCount = dayShifts.filter((s) => !s.employeeId).length
+    const droppable = !!onMoveShift && inMonth
     return (
       <div
         key={d}
-        className={`group min-h-[7rem] border-r border-slate-200 p-1 last:border-r-0 ${inMonth ? 'bg-white' : 'bg-slate-50/60'} ${
+        className={`group relative min-h-[7rem] border-r border-slate-200 p-1 last:border-r-0 ${inMonth ? 'bg-white' : 'bg-slate-50/60'} ${
           onDayClick ? 'cursor-pointer hover:bg-slate-50' : ''
-        }`}
+        } ${dragOver === d ? 'bg-sky-50 ring-2 ring-inset ring-sky-400' : ''}`}
         onClick={() => onDayClick?.(d)}
+        onDragOver={
+          droppable
+            ? (e) => {
+                if (!dragging.current) return
+                e.preventDefault()
+                e.dataTransfer.dropEffect = e.shiftKey ? 'copy' : 'move'
+                if (dragOver !== d) setDragOver(d)
+              }
+            : undefined
+        }
+        onDragLeave={droppable ? () => setDragOver((v) => (v === d ? null : v)) : undefined}
+        onDrop={
+          droppable
+            ? (e) => {
+                e.preventDefault()
+                const s = dragging.current
+                dragging.current = null
+                setDragOver(null)
+                if (!s) return
+                const copy = e.shiftKey
+                if (s.date === d && !copy) return
+                onMoveShift?.(s, d, copy)
+              }
+            : undefined
+        }
       >
+        {quickAdd === d && onQuickAdd && onAddClick && (
+          <QuickAddPopover
+            date={d}
+            employees={employees}
+            defaultPosition={defaultPosition}
+            onSubmit={onQuickAdd}
+            onMore={(draft) => {
+              setQuickAdd(null)
+              onAddClick({ ...draft, date: d })
+            }}
+            onClose={() => setQuickAdd(null)}
+          />
+        )}
         <div className="mb-1 flex items-center justify-between px-0.5">
           <span
             className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
@@ -197,14 +268,20 @@ export function MonthGrid({
             {fromDateKey(d).getDate()}
           </span>
           <span className="flex items-center gap-1 text-[10px] text-slate-400">
-            {dayShifts.length > 0 && <span>{dayShifts.length}</span>}
-            {onAddClick && (
+            {dayShifts.length > 0 && (
+              <span title={`${dayCount} before 4pm · ${eveCount} from 4pm${openCount ? ` · ${openCount} open` : ''}`}>
+                {dayCount} day · {eveCount} eve
+                {openCount > 0 && <span className="ml-1 font-semibold text-amber-600">{openCount} open</span>}
+              </span>
+            )}
+            {editable && (
               <button
-                className="hidden rounded px-1 text-slate-500 hover:bg-slate-200 group-hover:inline"
+                className={`rounded px-1 text-slate-500 hover:bg-slate-200 ${quickAdd === d ? 'inline bg-slate-200' : 'hidden group-hover:inline'}`}
                 title="Add shift"
                 onClick={(e) => {
                   e.stopPropagation()
-                  onAddClick(d)
+                  if (onQuickAdd) setQuickAdd(quickAdd === d ? null : d)
+                  else onAddClick?.({ date: d })
                 }}
               >
                 +
@@ -227,6 +304,7 @@ export function MonthGrid({
     )
   }
 
+  const gutter = !!onCopyWeek
   return (
     <div className="card overflow-hidden">
       <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2 text-xs">
@@ -247,7 +325,10 @@ export function MonthGrid({
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center text-xs font-medium uppercase tracking-wide text-slate-500">
+      <div
+        className={`grid ${gutter ? 'grid-cols-[1.75rem_repeat(7,minmax(0,1fr))]' : 'grid-cols-7'} border-b border-slate-200 bg-slate-50 text-center text-xs font-medium uppercase tracking-wide text-slate-500`}
+      >
+        {gutter && <div />}
         {WEEKDAYS.map((w) => (
           <div key={w} className="py-2">
             {w}
@@ -272,7 +353,22 @@ export function MonthGrid({
               {formatMonth(month)}
             </h3>
             {monthRange(month).weeks.map((week, wi) => (
-              <div key={wi} className="grid grid-cols-7 border-b border-slate-200">
+              <div
+                key={wi}
+                className={`group/week grid ${gutter ? 'grid-cols-[1.75rem_repeat(7,minmax(0,1fr))]' : 'grid-cols-7'} border-b border-slate-200`}
+              >
+                {gutter && (
+                  <div className="flex items-start justify-center border-r border-slate-200 bg-slate-50/60 pt-2">
+                    <button
+                      className="rounded p-0.5 text-slate-400 opacity-0 transition hover:bg-slate-200 hover:text-slate-700 group-hover/week:opacity-100 focus:opacity-100"
+                      title={`Copy week of ${fromDateKey(week[0]).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} to another week`}
+                      aria-label={`Copy week of ${week[0]}`}
+                      onClick={() => onCopyWeek?.(week[0])}
+                    >
+                      <Copy size={13} />
+                    </button>
+                  </div>
+                )}
                 {week.map((d) => cell(month, d))}
               </div>
             ))}

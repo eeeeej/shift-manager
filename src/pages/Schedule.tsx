@@ -42,10 +42,21 @@ function FilterChip({
   )
 }
 
+const VIEW_KEY = 'shift-manager:schedule:view'
+
 export function Schedule() {
-  const { shifts, employees, offers, isAdmin, me, employeeById, createShifts, deleteShifts } = useData()
+  const { shifts, employees, offers, isAdmin, me, employeeById, createShift, updateShift, createShifts, deleteShifts } =
+    useData()
   const isDesktop = useIsDesktop()
-  const [view, setView] = useState<'week' | 'month'>('week')
+  // Managers build the schedule in the month grid, so it's their default (last choice remembered).
+  const [view, setViewState] = useState<'week' | 'month'>(() => {
+    if (!isAdmin) return 'week'
+    return localStorage.getItem(VIEW_KEY) === 'week' ? 'week' : 'month'
+  })
+  const setView = (v: 'week' | 'month') => {
+    setViewState(v)
+    if (isAdmin) localStorage.setItem(VIEW_KEY, v)
+  }
   // Staff land on today's schedule; managers get the full week.
   const [days, setDays] = useState(isAdmin ? 7 : 1)
   const [start, setStart] = useState(() => (isAdmin ? startOfWeek(todayKey()) : todayKey()))
@@ -78,14 +89,23 @@ export function Schedule() {
     })
   const [draft, setDraft] = useState<ShiftDraft | null>(null)
   const [detail, setDetail] = useState<Shift | null>(null)
-  const [copying, setCopying] = useState(false)
+  const [copying, setCopying] = useState<string | null>(null)
   const [lastCopy, setLastCopy] = useState<CopyResult | null>(null)
   const [undoing, setUndoing] = useState(false)
 
   const finishCopy = (r: CopyResult) => {
-    setCopying(false)
+    setCopying(null)
     setLastCopy(r)
-    setStart(r.targetStart)
+    if (isMonth) jumpToMonth(monthKey(r.targetStart))
+    else setStart(r.targetStart)
+  }
+  const moveShift = (s: Shift, date: string, copy: boolean) => {
+    if (copy) {
+      const { id: _id, ...rest } = s
+      void createShift({ ...rest, date })
+    } else {
+      void updateShift(s.id, { date })
+    }
   }
   const undoCopy = async () => {
     if (!lastCopy) return
@@ -178,7 +198,7 @@ export function Schedule() {
               {!isMonth && (
                 <button
                   className="btn-secondary"
-                  onClick={() => setCopying(true)}
+                  onClick={() => setCopying(startOfWeek(range[0]))}
                   title="Copy this week's shifts to another week"
                 >
                   <Copy size={16} /> Copy week
@@ -283,7 +303,11 @@ export function Schedule() {
           offeredShiftIds={offeredShiftIds}
           onShiftClick={openShift}
           onDayClick={openDay}
-          onAddClick={isAdmin ? (date) => setDraft({ date, position: position || 'Server' }) : undefined}
+          onAddClick={isAdmin ? (d) => setDraft({ position: position || 'Server', ...d }) : undefined}
+          onQuickAdd={isAdmin ? createShift : undefined}
+          onMoveShift={isAdmin ? moveShift : undefined}
+          onCopyWeek={isAdmin ? setCopying : undefined}
+          defaultPosition={position || 'Server'}
         />
       ) : isDesktop ? (
         <TimelineGrid
@@ -349,9 +373,7 @@ export function Schedule() {
 
       {draft && <ShiftModal draft={draft} onClose={() => setDraft(null)} />}
       {detail && <ShiftDetailModal shift={detail} onClose={() => setDetail(null)} />}
-      {copying && (
-        <CopyWeekModal sourceStart={startOfWeek(start)} onClose={() => setCopying(false)} onDone={finishCopy} />
-      )}
+      {copying && <CopyWeekModal sourceStart={copying} onClose={() => setCopying(null)} onDone={finishCopy} />}
       {lastCopy && (
         <div
           role="status"
