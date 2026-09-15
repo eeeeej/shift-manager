@@ -73,7 +73,7 @@ export function Offers() {
           hint={tab === 'open' && me ? 'Need a shift covered? Use "Offer a shift".' : undefined}
         />
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 lg:grid-cols-2">
           {lists[tab].map((o) => (
             <OfferCard key={o.id} offer={o} />
           ))}

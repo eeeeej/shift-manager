@@ -105,7 +105,7 @@ export function Dashboard() {
           {visibleOffers.length > 0 && (
             <section>
               <h2 className="mb-2 font-semibold">Open trade offers</h2>
-              <div className="grid gap-2 md:grid-cols-2">
+              <div className="grid gap-3 lg:grid-cols-2">
                 {visibleOffers.slice(0, 4).map((o) => (
                   <OfferCard key={o.id} offer={o} />
                 ))}
@@ -200,7 +200,7 @@ export function Dashboard() {
             {visibleOffers.filter((o) => o.offeredBy !== me?.id).length === 0 ? (
               <EmptyState title="Nothing up for grabs right now" />
             ) : (
-              <div className="grid gap-2 md:grid-cols-2">
+              <div className="grid gap-3 lg:grid-cols-2">
                 {visibleOffers
                   .filter((o) => o.offeredBy !== me?.id)
                   .map((o) => (

@@ -51,28 +51,28 @@ export function OfferCard({ offer }: { offer: ShiftOffer }) {
         <div className="flex items-center gap-3">
           {offerer && <Avatar name={offerer.name} color={offerer.color} />}
           <div>
-            <div className="text-sm">
+            <div className="text-base sm:text-sm">
               <span className="font-semibold">{offerer?.name ?? 'Unknown'}</span>
               <span className="text-slate-500"> is giving up</span>
             </div>
-            <div className="text-sm font-medium">
+            <div className="text-base font-medium sm:text-sm">
               {formatDateShort(shift.date)} · {formatRange(shift.startMin, shift.endMin)}
-              <span className="ml-1.5 text-xs font-normal text-slate-500">{shift.position}</span>
+              <span className="ml-1.5 text-sm font-normal text-slate-500 sm:text-xs">{shift.position}</span>
             </div>
           </div>
         </div>
         <span className={`chip ${statusChip}`}>{offer.status}</span>
       </div>
 
-      <div className="mt-2 text-xs text-slate-500">
+      <div className="mt-2 text-sm text-slate-500 sm:text-xs">
         {target ? `Sent to ${target.name}` : `Open to anyone who works ${shift.position}`}
         {offer.status === 'claimed' && claimer && <span className="text-blue-700"> · claimed by {claimer.name}</span>}
         {shift.notes && <span> · {shift.notes}</span>}
       </div>
-      {offer.message && <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">“{offer.message}”</p>}
+      {offer.message && <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-base text-slate-700 sm:text-sm">“{offer.message}”</p>}
 
       {(canClaim || canCancel || isAdmin) && offer.status === 'open' && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2 [&>button]:min-h-11 [&>button]:flex-1 sm:[&>button]:min-h-0 sm:[&>button]:flex-none">
           {canClaim && (
             <button className="btn-primary" disabled={busy} onClick={() => act(() => claimOffer(offer.id, me!.id))}>
               Claim shift
