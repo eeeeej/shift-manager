@@ -15,14 +15,29 @@ export function Team() {
     .filter((e) => showInactive || e.active)
     .sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name))
 
+  const flash = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
+  /** Invite link to paste into a text/group chat; pre-fills the signup form. */
+  const copyInviteLink = async (e: Employee) => {
+    const url = new URL('/register', window.location.origin)
+    if (e.email) url.searchParams.set('email', e.email)
+    url.searchParams.set('name', e.name)
+    try {
+      await navigator.clipboard.writeText(url.toString())
+      flash(`Invite link for ${e.name} copied — paste it into a text`)
+    } catch {
+      prompt('Copy this invite link', url.toString())
+    }
+  }
   const invite = async (e: Employee) => {
     try {
       await inviteEmployee(e.id)
-      setToast(`Invite sent to ${e.email}`)
+      flash(`Invite emailed to ${e.email}`)
     } catch (err) {
-      setToast(err instanceof Error ? err.message : String(err))
+      flash(err instanceof Error ? err.message : String(err))
     }
-    setTimeout(() => setToast(null), 3000)
   }
 
   return (
@@ -94,9 +109,14 @@ export function Team() {
                   <Pencil size={15} />
                 </button>
                 {e.email && !e.userId && (
-                  <button className="btn-ghost p-1.5" onClick={() => invite(e)} title="Send login invite">
-                    <Send size={15} />
-                  </button>
+                  <>
+                    <button className="btn-ghost p-1.5" onClick={() => invite(e)} title="Email a login invite">
+                      <Send size={15} />
+                    </button>
+                    <button className="btn-ghost p-1.5" onClick={() => copyInviteLink(e)} title="Copy invite link (to text them)">
+                      <Link2 size={15} />
+                    </button>
+                  </>
                 )}
               </div>
             </div>

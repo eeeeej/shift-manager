@@ -173,7 +173,7 @@ export class SupabaseStore implements DataStore {
     if (!email) throw new Error('Employee has no email')
     const { error } = await this.client.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/login`, shouldCreateUser: true },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback`, shouldCreateUser: true },
     })
     if (error) throw new Error(error.message)
   }

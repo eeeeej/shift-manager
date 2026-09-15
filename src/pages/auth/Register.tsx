@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { DEMO_OTP, useAuth } from '../../auth/AuthContext'
 import { ErrorText } from '../../components/ui'
 import { isDemoMode } from '../../lib/supabase'
@@ -7,9 +7,11 @@ import { AuthShell, OAuthButtons } from './AuthShell'
 
 export function Register() {
   const { signUp, verifyOtp, signInWithGoogle, signInWithApple } = useAuth()
+  const [params] = useSearchParams()
+  const invited = params.get('email')?.trim() ?? ''
   const [step, setStep] = useState<'details' | 'otp'>('details')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState(params.get('name')?.trim() ?? '')
+  const [email, setEmail] = useState(invited)
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -77,7 +79,14 @@ export function Register() {
   }
 
   return (
-    <AuthShell title="Create account" subtitle="Use the email your manager has on file so your shifts link automatically.">
+    <AuthShell
+      title="Create account"
+      subtitle={
+        invited
+          ? 'Your manager invited you — just pick a password (or continue with Google).'
+          : 'Use the email your manager has on file. Only invited emails can create an account.'
+      }
+    >
       <form onSubmit={submitDetails} className="space-y-3">
         <div>
           <label className="label">Full name</label>

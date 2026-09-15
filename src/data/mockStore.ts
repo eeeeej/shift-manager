@@ -23,6 +23,12 @@ function readSnapshot(): Snapshot {
   return { employees: SEED_EMPLOYEES, shifts: SEED_SHIFTS, offers: SEED_OFFERS }
 }
 
+/** Demo counterpart of the invite-only signup trigger: active employee emails. */
+export function isInvitedDemoEmail(email: string): boolean {
+  const e = email.toLowerCase()
+  return readSnapshot().employees.some((emp) => emp.active && emp.email?.toLowerCase() === e)
+}
+
 export function resetDemoData() {
   localStorage.removeItem(KEY)
 }

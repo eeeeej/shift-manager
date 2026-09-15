@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { Profile } from '../types'
 import { isDemoMode, supabase } from '../lib/supabase'
 import { SEED_EMPLOYEES } from '../data/seed'
+import { isInvitedDemoEmail } from '../data/mockStore'
 
 export interface AuthApi {
   user: Profile | null
@@ -113,6 +114,8 @@ function useDemoAuth(): AuthApi {
     async signUp(email, password, fullName) {
       if (readDemoAccounts().some((a) => a.email.toLowerCase() === email.toLowerCase()))
         throw new Error('An account with that email already exists')
+      if (!isInvitedDemoEmail(email))
+        throw new Error('This email has not been invited. Ask a manager to add you on the Team page with this address.')
       setPending({ id: `user-${Date.now()}`, email: email.toLowerCase(), password, fullName, role: 'employee' })
     },
     async verifyOtp(email, token) {
