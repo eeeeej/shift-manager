@@ -19,6 +19,8 @@ export interface DataStore {
   createShift(input: ShiftInput): Promise<Shift>
   updateShift(id: string, patch: Partial<ShiftInput>): Promise<Shift>
   deleteShift(id: string): Promise<void>
+  createShifts(inputs: ShiftInput[]): Promise<Shift[]>
+  deleteShifts(ids: string[]): Promise<void>
 
   createEmployee(input: EmployeeInput): Promise<Employee>
   updateEmployee(id: string, patch: Partial<EmployeeInput>): Promise<Employee>

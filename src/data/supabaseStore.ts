@@ -140,6 +140,18 @@ export class SupabaseStore implements DataStore {
     if (error) throw new Error(error.message)
   }
 
+  async createShifts(inputs: ShiftInput[]): Promise<Shift[]> {
+    if (inputs.length === 0) return []
+    const res = await this.client.from('shifts').insert(inputs.map(shiftPatch)).select('*')
+    return unwrap<ShiftRow[]>(res).map(toShift)
+  }
+
+  async deleteShifts(ids: string[]): Promise<void> {
+    if (ids.length === 0) return
+    const { error } = await this.client.from('shifts').delete().in('id', ids)
+    if (error) throw new Error(error.message)
+  }
+
   async createEmployee(input: EmployeeInput): Promise<Employee> {
     const res = await this.client.from('employees').insert(employeePatch(input)).select('*').single()
     return toEmployee(unwrap<EmployeeRow>(res))

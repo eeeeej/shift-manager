@@ -23,6 +23,9 @@ export interface DataApi {
   createShift(input: ShiftInput): Promise<void>
   updateShift(id: string, patch: Partial<ShiftInput>): Promise<void>
   deleteShift(id: string): Promise<void>
+  /** Batch insert; resolves with the created shifts so the caller can undo. */
+  createShifts(inputs: ShiftInput[]): Promise<Shift[]>
+  deleteShifts(ids: string[]): Promise<void>
 
   createEmployee(input: EmployeeInput): Promise<void>
   updateEmployee(id: string, patch: Partial<EmployeeInput>): Promise<void>
@@ -103,6 +106,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       createShift: (input) => run(() => store.createShift(input)),
       updateShift: (id, patch) => run(() => store.updateShift(id, patch)),
       deleteShift: (id) => run(() => store.deleteShift(id)),
+      createShifts: async (inputs) => {
+        const created = await store.createShifts(inputs)
+        await reload()
+        return created
+      },
+      deleteShifts: (ids) => run(() => store.deleteShifts(ids)),
       createEmployee: (input) => run(() => store.createEmployee(input)),
       updateEmployee: (id, patch) => run(() => store.updateEmployee(id, patch)),
       deleteEmployee: (id) => run(() => store.deleteEmployee(id)),

@@ -60,6 +60,20 @@ export class MockStore implements DataStore {
     this.persist()
   }
 
+  async createShifts(inputs: ShiftInput[]): Promise<Shift[]> {
+    const created = inputs.map((input) => ({ ...input, id: uid('shift') }))
+    this.snap.shifts.push(...created)
+    this.persist()
+    return created
+  }
+
+  async deleteShifts(ids: string[]): Promise<void> {
+    const set = new Set(ids)
+    this.snap.shifts = this.snap.shifts.filter((s) => !set.has(s.id))
+    this.snap.offers = this.snap.offers.filter((o) => !set.has(o.shiftId))
+    this.persist()
+  }
+
   async createEmployee(input: EmployeeInput): Promise<Employee> {
     const employee: Employee = { ...input, id: uid('emp'), userId: null }
     this.snap.employees.push(employee)

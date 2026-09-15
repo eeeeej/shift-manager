@@ -1,5 +1,6 @@
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, Plus } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
+import { CopyWeekModal, type CopyResult } from '../components/CopyWeekModal'
 import { ShiftRow } from '../components/ShiftCard'
 import { ShiftDetailModal } from '../components/ShiftDetailModal'
 import { ShiftModal, type ShiftDraft } from '../components/ShiftModal'
@@ -12,7 +13,7 @@ import { POSITIONS, type Position, type Shift } from '../types'
 import { addDays, dateRange, formatDateLong, fromDateKey, startOfWeek, todayKey } from '../utils/time'
 
 export function Schedule() {
-  const { shifts, employees, offers, isAdmin, me, employeeById } = useData()
+  const { shifts, employees, offers, isAdmin, me, employeeById, createShifts, deleteShifts } = useData()
   const isDesktop = useIsDesktop()
   const [view, setView] = useState<'week' | 'month'>('week')
   const [days, setDays] = useState(7)
@@ -39,6 +40,26 @@ export function Schedule() {
   const [employeeFilter, setEmployeeFilter] = useState<string>('')
   const [draft, setDraft] = useState<ShiftDraft | null>(null)
   const [detail, setDetail] = useState<Shift | null>(null)
+  const [copying, setCopying] = useState(false)
+  const [lastCopy, setLastCopy] = useState<CopyResult | null>(null)
+  const [undoing, setUndoing] = useState(false)
+
+  const finishCopy = (r: CopyResult) => {
+    setCopying(false)
+    setLastCopy(r)
+    setStart(r.targetStart)
+  }
+  const undoCopy = async () => {
+    if (!lastCopy) return
+    setUndoing(true)
+    try {
+      await deleteShifts(lastCopy.created.map((s) => s.id))
+      if (lastCopy.removed.length) await createShifts(lastCopy.removed.map(({ id: _id, ...rest }) => rest))
+      setLastCopy(null)
+    } finally {
+      setUndoing(false)
+    }
+  }
 
   const range = useMemo(() => {
     if (!isMonth) return dateRange(start, days)
@@ -108,12 +129,23 @@ export function Schedule() {
         subtitle={title}
         actions={
           isAdmin && (
-            <button
-              className="btn-primary"
-              onClick={() => setDraft({ date: range[0], position: position || 'Server' })}
-            >
-              <Plus size={16} /> Shift
-            </button>
+            <>
+              {!isMonth && (
+                <button
+                  className="btn-secondary"
+                  onClick={() => setCopying(true)}
+                  title="Copy this week's shifts to another week"
+                >
+                  <Copy size={16} /> Copy week
+                </button>
+              )}
+              <button
+                className="btn-primary"
+                onClick={() => setDraft({ date: range[0], position: position || 'Server' })}
+              >
+                <Plus size={16} /> Shift
+              </button>
+            </>
           )
         }
       />
@@ -263,6 +295,24 @@ export function Schedule() {
 
       {draft && <ShiftModal draft={draft} onClose={() => setDraft(null)} />}
       {detail && <ShiftDetailModal shift={detail} onClose={() => setDetail(null)} />}
+      {copying && (
+        <CopyWeekModal sourceStart={startOfWeek(start)} onClose={() => setCopying(false)} onDone={finishCopy} />
+      )}
+      {lastCopy && (
+        <div
+          role="status"
+          className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-white shadow-lg"
+        >
+          Copied {lastCopy.created.length} shift{lastCopy.created.length === 1 ? '' : 's'}
+          {lastCopy.removed.length > 0 && `, replaced ${lastCopy.removed.length}`}
+          <button className="font-semibold text-amber-300 hover:text-amber-200" onClick={undoCopy} disabled={undoing}>
+            {undoing ? 'Undoing…' : 'Undo'}
+          </button>
+          <button className="text-slate-400 hover:text-white" onClick={() => setLastCopy(null)} aria-label="Dismiss">
+            ×
+          </button>
+        </div>
+      )}
     </div>
   )
 }
