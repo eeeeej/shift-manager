@@ -418,10 +418,13 @@ export function Schedule() {
     else if (isWeekFeed) jumpToWeek(addDays(visibleWeek, dir * 7));
     else setStart(addDays(start, dir * days));
   };
+  // Bumped by Today so the phone list re-scrolls even when the range is already current.
+  const [todayNonce, setTodayNonce] = useState(0);
   const goToday = () => {
     if (isMonth) showMonth(monthKey(todayKey()));
     else if (isWeekFeed) jumpToWeek(startOfWeek(todayKey()));
     else setStart(view === "week" ? startOfWeek(todayKey()) : todayKey());
+    setTodayNonce((n) => n + 1);
   };
 
   // Phones: the controls stick under the app header, and a stacked list opens with today (or its first day) at the top.
@@ -438,7 +441,7 @@ export function Schedule() {
     window.scrollTo({
       top: cell.getBoundingClientRect().top + window.scrollY - offset,
     });
-  }, [isDesktop, range, shiftsLoaded]);
+  }, [isDesktop, range, shiftsLoaded, todayNonce]);
   // Phones: the day whose cell is at the top of the stacked list, shown in the sticky header.
   const [topDay, setTopDay] = useState<string | null>(null);
   const stacked = !isDesktop && (isMonth || days > 1);
