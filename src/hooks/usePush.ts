@@ -23,19 +23,15 @@ function supported(): boolean {
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 }
 
-async function saveSubscription(userId: string, sub: PushSubscription): Promise<void> {
+async function saveSubscription(sub: PushSubscription): Promise<void> {
   if (!supabase) return
   const json = sub.toJSON()
-  const { error } = await supabase.from('push_subscriptions').upsert(
-    {
-      user_id: userId,
-      endpoint: sub.endpoint,
-      p256dh: json.keys?.p256dh,
-      auth: json.keys?.auth,
-      user_agent: navigator.userAgent.slice(0, 200),
-    },
-    { onConflict: 'endpoint' },
-  )
+  const { error } = await supabase.rpc('bind_push_subscription', {
+    p_endpoint: sub.endpoint,
+    p_p256dh: json.keys?.p256dh,
+    p_auth: json.keys?.auth,
+    p_user_agent: navigator.userAgent.slice(0, 200),
+  })
   if (error) throw error
 }
 
@@ -55,7 +51,7 @@ export function usePush(userId: string | undefined) {
     const sub = await reg?.pushManager.getSubscription()
     if (sub && userId) {
       try {
-        await saveSubscription(userId, sub)
+        await saveSubscription(sub)
       } catch (e) {
         console.error('push rebind failed', e)
       }
@@ -80,7 +76,7 @@ export function usePush(userId: string | undefined) {
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
         }))
-      await saveSubscription(userId, sub)
+      await saveSubscription(sub)
       setState('on')
     } catch (e) {
       console.error('push enable failed', e)
@@ -95,7 +91,7 @@ export function usePush(userId: string | undefined) {
       const reg = await navigator.serviceWorker.getRegistration()
       const sub = await reg?.pushManager.getSubscription()
       if (sub) {
-        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+        await supabase.rpc('unbind_push_subscription', { p_endpoint: sub.endpoint })
         await sub.unsubscribe()
       }
     } finally {
