@@ -88,7 +88,7 @@ export function ReassignModal({ shift, onClose }: { shift: Shift; onClose: () =>
     setError(null)
     try {
       await updateShift(shift.id, { employeeId: employeeId || null, status: employeeId ? 'scheduled' : 'open' })
-      for (const o of offers) if (o.shiftId === shift.id && o.status === 'open') await cancelOffer(o.id)
+      for (const o of offers) if (o.shiftId === shift.id && o.status === 'open') await cancelOffer(o.id, 'reassigned')
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))

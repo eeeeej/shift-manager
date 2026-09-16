@@ -199,8 +199,8 @@ export class SupabaseStore implements DataStore {
     if (error) throw new Error(error.message)
   }
 
-  async cancelOffer(offerId: string): Promise<void> {
-    const { error } = await this.client.from('shift_offers').update({ status: 'cancelled' })
+  async cancelOffer(offerId: string, _byName?: string, outcome: 'cancelled' | 'reassigned' = 'cancelled'): Promise<void> {
+    const { error } = await this.client.from('shift_offers').update({ status: outcome })
       .eq('id', offerId)
     if (error) throw new Error(error.message)
   }

@@ -31,5 +31,6 @@ export interface DataStore {
   createOffer(input: OfferInput): Promise<ShiftOffer>
   /** Claim an open offer: reassigns the shift to the claimer and closes the offer. */
   claimOffer(offerId: string, claimerEmployeeId: string): Promise<void>
-  cancelOffer(offerId: string, byName?: string): Promise<void>
+  /** `outcome` is 'reassigned' when a manager moved the shift instead of cancelling the offer outright. */
+  cancelOffer(offerId: string, byName?: string, outcome?: 'cancelled' | 'reassigned'): Promise<void>
 }

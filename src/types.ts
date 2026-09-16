@@ -39,7 +39,7 @@ export interface Shift {
   color: string | null
 }
 
-export type OfferStatus = 'open' | 'claimed' | 'cancelled'
+export type OfferStatus = 'open' | 'claimed' | 'cancelled' | 'reassigned'
 
 export interface ShiftOffer {
   id: string

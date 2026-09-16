@@ -59,6 +59,7 @@ export function OfferCard({ offer }: { offer: ShiftOffer }) {
     open: "bg-emerald-100 text-emerald-800",
     claimed: "bg-blue-100 text-blue-800",
     cancelled: "bg-slate-100 text-slate-500",
+    reassigned: "bg-slate-100 text-slate-500",
   }[offer.status];
 
   return (
@@ -97,7 +98,7 @@ export function OfferCard({ offer }: { offer: ShiftOffer }) {
       <div className="mt-1 text-xs text-slate-400">
         Offered {formatStamp(offer.createdAt)}
         {offer.resolvedAt && offer.status !== "open" && (
-          <span> · {offer.status === "claimed" ? "Claimed" : "Cancelled"} {formatStamp(offer.resolvedAt)}
+          <span> · {{ claimed: "Claimed", cancelled: "Cancelled", reassigned: "Shift reassigned", open: "" }[offer.status]} {formatStamp(offer.resolvedAt)}
             {offer.resolvedByName && ` by ${offer.resolvedByName}`}
           </span>
         )}

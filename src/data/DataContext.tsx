@@ -34,7 +34,7 @@ export interface DataApi {
 
   createOffer(input: OfferInput): Promise<void>
   claimOffer(offerId: string, claimerEmployeeId: string): Promise<void>
-  cancelOffer(offerId: string): Promise<void>
+  cancelOffer(offerId: string, outcome?: 'cancelled' | 'reassigned'): Promise<void>
 }
 
 const DataContext = createContext<DataApi | null>(null)
@@ -146,7 +146,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       inviteEmployee: (id) => store.inviteEmployee(id),
       createOffer: (input) => run(() => store.createOffer(input)),
       claimOffer: (offerId, claimer) => run(() => store.claimOffer(offerId, claimer)),
-      cancelOffer: (offerId) => run(() => store.cancelOffer(offerId, me?.name ?? user?.fullName ?? user?.email)),
+      cancelOffer: (offerId, outcome) =>
+        run(() => store.cancelOffer(offerId, me?.name ?? user?.fullName ?? user?.email, outcome)),
     }),
     [employees, shifts, offers, loading, error, me, isAdmin, reload, run, user],
   )

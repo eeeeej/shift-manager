@@ -144,10 +144,10 @@ export class MockStore implements DataStore {
     await this.updateShift(offer.shiftId, { employeeId: claimerEmployeeId, status: 'scheduled' })
   }
 
-  async cancelOffer(offerId: string, byName?: string): Promise<void> {
+  async cancelOffer(offerId: string, byName?: string, outcome: 'cancelled' | 'reassigned' = 'cancelled'): Promise<void> {
     const offer = this.snap.offers.find((o) => o.id === offerId)
     if (!offer) return
-    offer.status = 'cancelled'
+    offer.status = outcome
     offer.resolvedAt = new Date().toISOString()
     offer.resolvedByName = byName ?? null
     this.persist()
