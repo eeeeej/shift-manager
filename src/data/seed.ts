@@ -334,6 +334,7 @@ export const SEED_OFFERS: ShiftOffer[] = [
     message: 'Family thing Friday night — can anyone take my 4–9?',
     createdAt: '2026-09-14T15:00:00.000Z',
     resolvedAt: null,
+    resolvedByName: null,
   },
   {
     id: 'offer-2',
@@ -345,5 +346,6 @@ export const SEED_OFFERS: ShiftOffer[] = [
     message: 'Ashly, still up for swapping Saturday?',
     createdAt: '2026-09-14T18:30:00.000Z',
     resolvedAt: null,
+    resolvedByName: null,
   },
 ]

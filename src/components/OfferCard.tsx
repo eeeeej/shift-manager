@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useData } from "../data/DataContext";
 import type { ShiftOffer } from "../types";
 import { conflictMessage, confirmOverlap, findConflicts } from "../utils/conflicts";
-import { formatDateShort, formatRange, todayKey } from "../utils/time";
+import { formatDateShort, formatRange, formatStamp, todayKey } from "../utils/time";
 import { ReassignModal } from "./OfferModal";
 import { Avatar, ErrorText, WarnText } from "./ui";
 
@@ -93,6 +93,14 @@ export function OfferCard({ offer }: { offer: ShiftOffer }) {
           <span className="text-blue-700"> · claimed by {claimer.name}</span>
         )}
         {shift.notes && <span> · {shift.notes}</span>}
+      </div>
+      <div className="mt-1 text-xs text-slate-400">
+        Offered {formatStamp(offer.createdAt)}
+        {offer.resolvedAt && offer.status !== "open" && (
+          <span> · {offer.status === "claimed" ? "Claimed" : "Cancelled"} {formatStamp(offer.resolvedAt)}
+            {offer.resolvedByName && ` by ${offer.resolvedByName}`}
+          </span>
+        )}
       </div>
       {offer.message && (
         <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-base text-slate-700 sm:text-sm">

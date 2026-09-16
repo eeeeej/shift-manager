@@ -36,6 +36,7 @@ interface OfferRow {
   message: string | null
   created_at: string
   resolved_at: string | null
+  resolved_by_name: string | null
 }
 
 const toEmployee = (r: EmployeeRow): Employee => ({
@@ -72,6 +73,7 @@ const toOffer = (r: OfferRow): ShiftOffer => ({
   message: r.message,
   createdAt: r.created_at,
   resolvedAt: r.resolved_at,
+  resolvedByName: r.resolved_by_name,
 })
 
 function shiftPatch(p: Partial<ShiftInput>): Partial<ShiftRow> {
@@ -198,9 +200,7 @@ export class SupabaseStore implements DataStore {
   }
 
   async cancelOffer(offerId: string): Promise<void> {
-    const { error } = await this.client
-      .from('shift_offers')
-      .update({ status: 'cancelled', resolved_at: new Date().toISOString() })
+    const { error } = await this.client.from('shift_offers').update({ status: 'cancelled' })
       .eq('id', offerId)
     if (error) throw new Error(error.message)
   }

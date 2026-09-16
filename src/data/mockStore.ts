@@ -119,6 +119,7 @@ export class MockStore implements DataStore {
       status: 'open',
       createdAt: new Date().toISOString(),
       resolvedAt: null,
+      resolvedByName: null,
     }
     this.snap.offers.push(offer)
     this.persist()
@@ -132,20 +133,23 @@ export class MockStore implements DataStore {
     offer.claimedBy = claimerEmployeeId
     offer.status = 'claimed'
     offer.resolvedAt = now
+    offer.resolvedByName = this.snap.employees.find((e) => e.id === claimerEmployeeId)?.name ?? null
     for (const other of this.snap.offers) {
       if (other.id !== offerId && other.shiftId === offer.shiftId && other.status === 'open') {
         other.status = 'cancelled'
         other.resolvedAt = now
+        other.resolvedByName = offer.resolvedByName
       }
     }
     await this.updateShift(offer.shiftId, { employeeId: claimerEmployeeId, status: 'scheduled' })
   }
 
-  async cancelOffer(offerId: string): Promise<void> {
+  async cancelOffer(offerId: string, byName?: string): Promise<void> {
     const offer = this.snap.offers.find((o) => o.id === offerId)
     if (!offer) return
     offer.status = 'cancelled'
     offer.resolvedAt = new Date().toISOString()
+    offer.resolvedByName = byName ?? null
     this.persist()
   }
 }

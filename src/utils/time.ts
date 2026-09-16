@@ -79,6 +79,11 @@ export function formatDateShort(key: string): string {
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
+/** "Sep 16, 1:44 PM" for an ISO timestamp, in the viewer's local time. */
+export function formatStamp(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
 export function minToTimeInput(min: number): string {
   return `${pad(Math.floor(min / 60))}:${pad(min % 60)}`
 }

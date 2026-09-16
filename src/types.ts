@@ -52,6 +52,8 @@ export interface ShiftOffer {
   message: string | null
   createdAt: string
   resolvedAt: string | null
+  /** Name of whoever claimed/cancelled it */
+  resolvedByName: string | null
 }
 
 export type ShiftInput = Omit<Shift, 'id'>

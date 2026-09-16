@@ -118,9 +118,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       inviteEmployee: (id) => store.inviteEmployee(id),
       createOffer: (input) => run(() => store.createOffer(input)),
       claimOffer: (offerId, claimer) => run(() => store.claimOffer(offerId, claimer)),
-      cancelOffer: (offerId) => run(() => store.cancelOffer(offerId)),
+      cancelOffer: (offerId) => run(() => store.cancelOffer(offerId, me?.name ?? user?.fullName ?? user?.email)),
     }),
-    [employees, shifts, offers, loading, error, me, isAdmin, reload, run],
+    [employees, shifts, offers, loading, error, me, isAdmin, reload, run, user],
   )
 
   return <DataContext.Provider value={api}>{children}</DataContext.Provider>

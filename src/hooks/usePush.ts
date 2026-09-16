@@ -23,7 +23,27 @@ function supported(): boolean {
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 }
 
-/** Web Push opt-in for the signed-in user; one subscription per device. */
+async function saveSubscription(userId: string, sub: PushSubscription): Promise<void> {
+  if (!supabase) return
+  const json = sub.toJSON()
+  const { error } = await supabase.from('push_subscriptions').upsert(
+    {
+      user_id: userId,
+      endpoint: sub.endpoint,
+      p256dh: json.keys?.p256dh,
+      auth: json.keys?.auth,
+      user_agent: navigator.userAgent.slice(0, 200),
+    },
+    { onConflict: 'endpoint' },
+  )
+  if (error) throw error
+}
+
+/**
+ * Web Push opt-in for the signed-in user; one subscription per device.
+ * The device subscription follows whoever is logged in: on load it is re-saved
+ * under the current user so a shared/switched phone notifies the right person.
+ */
 export function usePush(userId: string | undefined) {
   const [state, setState] = useState<PushState>('busy')
 
@@ -33,8 +53,15 @@ export function usePush(userId: string | undefined) {
     if (Notification.permission === 'denied') return setState('denied')
     const reg = await navigator.serviceWorker.getRegistration()
     const sub = await reg?.pushManager.getSubscription()
+    if (sub && userId) {
+      try {
+        await saveSubscription(userId, sub)
+      } catch (e) {
+        console.error('push rebind failed', e)
+      }
+    }
     setState(sub ? 'on' : 'off')
-  }, [])
+  }, [userId])
 
   useEffect(() => {
     void refresh()
@@ -53,18 +80,7 @@ export function usePush(userId: string | undefined) {
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
         }))
-      const json = sub.toJSON()
-      const { error } = await supabase.from('push_subscriptions').upsert(
-        {
-          user_id: userId,
-          endpoint: sub.endpoint,
-          p256dh: json.keys?.p256dh,
-          auth: json.keys?.auth,
-          user_agent: navigator.userAgent.slice(0, 200),
-        },
-        { onConflict: 'endpoint' },
-      )
-      if (error) throw error
+      await saveSubscription(userId, sub)
       setState('on')
     } catch (e) {
       console.error('push enable failed', e)
