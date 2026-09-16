@@ -68,6 +68,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (user) reload()
   }, [user, reload])
 
+  // Keep other people's changes visible: refetch when the app comes back to the
+  // foreground, and on any DB change (Supabase realtime) with a short debounce.
+  useEffect(() => {
+    if (!user) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const soon = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => void reload(), 300)
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') soon()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', soon)
+    const channel = supabase
+      ?.channel('data-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_offers' }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, soon)
+      .subscribe()
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', soon)
+      if (channel) void supabase?.removeChannel(channel)
+    }
+  }, [user, reload])
+
   const employees = user ? rawEmployees : EMPTY.employees
   const shifts = user ? rawShifts : EMPTY.shifts
   const offers = user ? rawOffers : EMPTY.offers
