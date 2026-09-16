@@ -571,7 +571,11 @@ export function Schedule() {
       >
         <PageHeader
           title={isDesktop ? "Schedule" : formatDateShort(topDay ?? range[0])}
-          subtitle={!isDesktop && days === 1 && !isMonth ? undefined : title}
+          subtitle={
+            !isDesktop && days === 1 && !isMonth
+              ? `${range[0] === todayKey() ? "Today · " : ""}${visible.length} shifts`
+              : title
+          }
           className="mb-2 md:mb-4"
           actions={
             isAdmin && (
@@ -826,19 +830,21 @@ export function Schedule() {
               const isToday = d === todayKey();
               return (
                 <section key={d}>
-                  <h3
-                    className={`mb-1.5 flex items-center gap-2 text-sm font-semibold ${isToday ? "text-slate-900" : "text-slate-600"}`}
-                  >
-                    {formatDateLong(d)}
-                    {isToday && (
-                      <span className="chip bg-slate-900 text-white">
-                        Today
+                  {range.length > 1 && (
+                    <h3
+                      className={`mb-1.5 flex items-center gap-2 text-sm font-semibold ${isToday ? "text-slate-900" : "text-slate-600"}`}
+                    >
+                      {formatDateLong(d)}
+                      {isToday && (
+                        <span className="chip bg-slate-900 text-white">
+                          Today
+                        </span>
+                      )}
+                      <span className="ml-auto text-xs font-normal text-slate-400">
+                        {dayShifts.length} shifts
                       </span>
-                    )}
-                    <span className="ml-auto text-xs font-normal text-slate-400">
-                      {dayShifts.length} shifts
-                    </span>
-                  </h3>
+                    </h3>
+                  )}
                   {dayShifts.length === 0 ? (
                     <EmptyState title="Nothing scheduled" />
                   ) : (
