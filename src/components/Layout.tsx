@@ -6,6 +6,7 @@ import { useData } from '../data/DataContext'
 import { visibleOffersFor } from '../data/offers'
 import { isDemoMode } from '../lib/supabase'
 import { resetDemoData } from '../data/mockStore'
+import { InstallBanner } from './InstallBanner'
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth()
@@ -70,7 +71,10 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-4 sm:py-6">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-4 sm:py-6">
+        <InstallBanner />
+        {children}
+      </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {nav.map((n) => (
