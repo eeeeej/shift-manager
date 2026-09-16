@@ -2,6 +2,7 @@ import { ArrowLeftRight, CalendarDays, Clock, List, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
+import { NotificationsCard } from '../components/NotificationsCard'
 import { OfferCard } from '../components/OfferCard'
 import { ShiftRow } from '../components/ShiftCard'
 import { ShiftDetailModal } from '../components/ShiftDetailModal'
@@ -78,6 +79,8 @@ export function Dashboard() {
           {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
         </p>
       </div>
+
+      <NotificationsCard />
 
       {isAdmin ? (
         <>

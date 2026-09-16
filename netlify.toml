@@ -4,6 +4,8 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # Web Push application server key (public half; private half lives in Supabase function secrets)
+  VITE_VAPID_PUBLIC_KEY = "BObkOB9xYHkryNJaONInmMfh_ZQVpV1FgpzTZlGwwfRi_t-u3lh5xGwFYpzJxFb5wliqVHwrJvwMe6CHn_l_UAQ"
 
 [[redirects]]
   from = "/*"
