@@ -157,6 +157,15 @@ async function plan(p: Payload): Promise<Map<string, Note>> {
         if (a !== claimerUser) add(a, { title: 'Offer claimed', body: `${claimer} took ${offerer}'s ${when(shift)} ${shift.position}.`, url: '/offers', tag })
       }
     }
+
+    if (p.type === 'UPDATE' && o.status === 'cancelled' && old?.status === 'open') {
+      add(userOf(o.offered_by), {
+        title: 'Offer cancelled',
+        body: `Your offer for ${when(shift)} ${shift.position} was cancelled — you're still on it.`,
+        url: '/schedule',
+        tag: `offer-${o.id}`,
+      })
+    }
   }
 
   if (p.table === 'shifts' && p.type === 'UPDATE' && p.record && p.old_record) {
