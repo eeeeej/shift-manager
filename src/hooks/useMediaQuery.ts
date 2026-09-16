@@ -11,4 +11,6 @@ export function useMediaQuery(query: string): boolean {
   return matches
 }
 
-export const useIsDesktop = () => useMediaQuery('(min-width: 768px)')
+// Phones report well under 768px in landscape (esp. with Android display scaling), so treat any wide-enough landscape viewport as desktop too.
+export const useIsDesktop = () =>
+  useMediaQuery('(min-width: 768px), (orientation: landscape) and (min-width: 600px)')
