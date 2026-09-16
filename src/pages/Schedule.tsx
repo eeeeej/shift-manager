@@ -418,6 +418,9 @@ export function Schedule() {
     else if (isWeekFeed) jumpToWeek(addDays(visibleWeek, dir * 7));
     else setStart(addDays(start, dir * days));
   };
+  // "All positions" / "Everyone" are toggles: off reveals the detailed chips, on clears the filter.
+  const [positionsOpen, setPositionsOpen] = useState(positionFilter.size > 0);
+  const [staffOpen, setStaffOpen] = useState(employeeFilter.size > 0);
   // Bumped by Today so the phone list re-scrolls even when the range is already current.
   const [todayNonce, setTodayNonce] = useState(0);
   const goToday = () => {
@@ -671,35 +674,43 @@ export function Schedule() {
           )}
         </div>
 
-        <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <FilterChip
-            active={positionFilter.size === 0}
-            onClick={() => setPositionFilter(new Set())}
-          >
-            All positions
-          </FilterChip>
-          {scheduledPositions.map((p) => (
-            <FilterChip
-              key={p}
-              active={positionFilter.has(p)}
-              onClick={() => togglePosition(p)}
-            >
-              {p}
-            </FilterChip>
-          ))}
-          {stacked && (
-            <DayPartToggle state={dayParts} compact className="ml-auto" />
-          )}
-        </div>
+        {stacked && (
+          <div className="mb-2 flex items-center justify-end border-b border-slate-200 pb-2">
+            <DayPartToggle state={dayParts} compact />
+          </div>
+        )}
 
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           <FilterChip
-            active={employeeFilter.size === 0}
-            onClick={() => setEmployeeFilter(new Set())}
+            active={!positionsOpen}
+            onClick={() => {
+              if (positionsOpen) setPositionFilter(new Set());
+              setPositionsOpen(!positionsOpen);
+            }}
+          >
+            All positions
+          </FilterChip>
+          {positionsOpen &&
+            scheduledPositions.map((p) => (
+              <FilterChip
+                key={p}
+                active={positionFilter.has(p)}
+                onClick={() => togglePosition(p)}
+              >
+                {p}
+              </FilterChip>
+            ))}
+          {positionsOpen && <span className="mx-1 h-5 w-px bg-slate-300" />}
+          <FilterChip
+            active={!staffOpen}
+            onClick={() => {
+              if (staffOpen) setEmployeeFilter(new Set());
+              setStaffOpen(!staffOpen);
+            }}
           >
             Everyone
           </FilterChip>
-          {me && (
+          {staffOpen && me && (
             <FilterChip
               active={employeeFilter.has(me.id)}
               color={me.color}
@@ -708,7 +719,7 @@ export function Schedule() {
               Just me
             </FilterChip>
           )}
-          {isAdmin && scheduledEmployees.length > 0 && (
+          {staffOpen && isAdmin && scheduledEmployees.length > 0 && (
             <StaffPicker
               employees={scheduledEmployees}
               selected={employeeFilter}
