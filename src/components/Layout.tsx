@@ -26,12 +26,12 @@ export function Layout({ children }: { children: ReactNode }) {
     }`
 
   return (
-    <div className="min-h-screen pb-16 md:pb-0">
+    <div className="min-h-screen pb-16 md:pb-0 short:pb-0">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 short:py-1">
           <div className="flex items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-slate-900 text-sm font-bold text-white">S</span>
-            <span className="font-semibold">Shift Manager</span>
+            <span className="font-semibold short:hidden">Shift Manager</span>
             {isDemoMode && (
               <button
                 className="chip ml-2 bg-amber-100 text-amber-800 hover:bg-amber-200"
@@ -50,7 +50,7 @@ export function Layout({ children }: { children: ReactNode }) {
               {__BUILD_ID__}
             </span>
           </div>
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-1 md:flex short:flex">
             {nav.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.to === '/'} className={linkCls}>
                 <n.icon size={16} />
@@ -60,23 +60,23 @@ export function Layout({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="flex items-center gap-2 text-sm">
-            <span className="hidden text-slate-600 sm:inline">
+            <span className="hidden text-slate-600 sm:inline short:hidden">
               {me?.name ?? user?.fullName ?? user?.email}
               <span className="ml-1.5 chip bg-slate-100 text-slate-600">{isAdmin ? 'admin' : 'staff'}</span>
             </span>
             <button className="btn-ghost flex items-center gap-1 px-2 py-2 text-xs text-slate-600" onClick={signOut} title="Sign out">
-              <Power size={15} /> <span className="hidden sm:inline">Sign out</span>
+              <Power size={15} /> <span className="hidden sm:inline short:hidden">Sign out</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-4 sm:py-6">
+      <main className="mx-auto max-w-7xl px-4 py-4 sm:py-6 short:py-1">
         <InstallBanner />
         {children}
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white md:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white md:hidden short:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {nav.map((n) => (
           <NavLink
             key={n.to}

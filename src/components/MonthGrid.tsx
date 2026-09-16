@@ -173,7 +173,7 @@ export function MonthGrid({
       >
         {gutter && <div />}
         {WEEKDAYS.map((w) => (
-          <div key={w} className="py-2">
+          <div key={w} className="py-2 short:py-0.5">
             {w}
           </div>
         ))}
@@ -181,7 +181,7 @@ export function MonthGrid({
       <div
         ref={scroller}
         onScroll={updateVisible}
-        className="relative max-h-[calc(100vh-16rem)] min-h-[24rem] overflow-y-auto"
+        className="relative max-h-[calc(100vh-16rem)] min-h-[24rem] overflow-y-auto short:h-[calc(100dvh-8rem)] short:max-h-none short:min-h-0"
       >
         <div ref={topSentinel} className="h-px" />
         {months.map((month) => (

@@ -2,7 +2,12 @@
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
-    extend: {},
+    extend: {
+      screens: {
+        // landscape phones: very little vertical room
+        short: { raw: '(orientation: landscape) and (max-height: 500px)' },
+      },
+    },
   },
   plugins: [],
 }

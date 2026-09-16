@@ -490,7 +490,7 @@ export function Schedule() {
               ? `${range[0] === todayKey() ? "Today · " : ""}${visible.length} shifts`
               : title
           }
-          className="mb-2 md:mb-4"
+          className="mb-2 md:mb-4 short:hidden"
           actions={
             isAdmin && (
               <>
@@ -519,7 +519,7 @@ export function Schedule() {
           }
         />
 
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2 short:mb-1">
           <div className="flex items-center gap-1">
             <button
               className="btn-secondary px-2"
@@ -659,7 +659,7 @@ export function Schedule() {
             ),
           });
           return (
-            <div className="mb-3 space-y-1.5">
+            <div className="mb-3 space-y-1.5 short:hidden">
               <div className="flex flex-wrap items-center gap-1.5">
                 {groups
                   .filter((g) => !g.open)
