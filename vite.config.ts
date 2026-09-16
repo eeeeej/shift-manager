@@ -26,7 +26,7 @@ export default defineConfig({
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Shift Manager',
-        short_name: 'Shifts',
+        short_name: 'Shift Manager',
         description: 'Staff schedule, open shifts and swaps.',
         theme_color: '#0f172a',
         background_color: '#ffffff',

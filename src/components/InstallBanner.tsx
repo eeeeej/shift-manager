@@ -48,7 +48,7 @@ export function InstallBanner() {
     <div className="mx-auto mb-3 flex max-w-7xl items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm md:hidden">
       <img src="/pwa-192.png" alt="" className="h-9 w-9 rounded-lg" />
       <div className="min-w-0 flex-1">
-        <div className="font-medium">Add Shifts to your home screen</div>
+        <div className="font-medium">Add Shift Manager to your home screen</div>
         <div className="text-xs text-slate-500">
           {ios ? (
             <>

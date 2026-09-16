@@ -40,7 +40,7 @@ export function NotificationsCard() {
     body = 'Notifications are blocked for this site — allow them in your browser or phone settings, then reload.'
   } else if (state === 'unsupported') {
     if (!iosNotInstalled()) return null
-    body = 'On iPhone, add Shifts to your home screen first (Share → Add to Home Screen), then turn on notifications from there.'
+    body = 'On iPhone, add Shift Manager to your home screen first (Share → Add to Home Screen), then turn on notifications from there.'
   } else {
     body = 'Hear about open shifts you can pick up, when your offer is taken, and when your schedule changes.'
     action = (

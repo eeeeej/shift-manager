@@ -1,4 +1,4 @@
-import { ArrowLeftRight, CalendarDays, LayoutDashboard, LogOut, Users } from 'lucide-react'
+import { ArrowLeftRight, CalendarDays, LayoutDashboard, Power, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -64,8 +64,8 @@ export function Layout({ children }: { children: ReactNode }) {
               {me?.name ?? user?.fullName ?? user?.email}
               <span className="ml-1.5 chip bg-slate-100 text-slate-600">{isAdmin ? 'admin' : 'staff'}</span>
             </span>
-            <button className="btn-ghost p-2" onClick={signOut} title="Sign out">
-              <LogOut size={16} />
+            <button className="btn-ghost flex items-center gap-1 px-2 py-2 text-xs text-slate-600" onClick={signOut} title="Sign out">
+              <Power size={15} /> <span className="hidden sm:inline">Sign out</span>
             </button>
           </div>
         </div>
