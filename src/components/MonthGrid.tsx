@@ -109,7 +109,10 @@ export function MonthGrid({
   const updateVisible = () => {
     const el = scroller.current
     if (!el) return
-    if (Math.abs(el.scrollTop - lastSet.current) > 2) pinned.current = false
+    if (Math.abs(el.scrollTop - lastSet.current) > 2) {
+      pinned.current = false
+      autoToday.current = false
+    }
     const top = el.getBoundingClientRect().top + 8
     let current = months[0]
     for (const m of months) {
@@ -134,6 +137,17 @@ export function MonthGrid({
     const b = blocks.current.get(scrollTarget.month)
     if (el && b) setScroll(el, b.offsetTop)
   }, [scrollTarget, months, shifts])
+
+  // Open with today's week at the top (until the user scrolls or jumps to a month).
+  const autoToday = useRef(true)
+  const loaded = shifts.length > 0
+  useLayoutEffect(() => {
+    if (!autoToday.current || scrollTarget) return
+    const el = scroller.current
+    const cell = el?.querySelector<HTMLElement>(`[data-date="${today}"]`)
+    if (!el || !cell) return
+    setScroll(el, el.scrollTop + cell.getBoundingClientRect().top - el.getBoundingClientRect().top - 36)
+  }, [loaded, scrollTarget, today]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const cell = (month: string, d: string) => (
     <DayCell

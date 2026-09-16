@@ -1,5 +1,4 @@
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -79,95 +78,6 @@ function FilterChip({
   );
 }
 
-/** Staff filter chips tucked behind one "Staff" chip; opens a popover of color-coded, multi-select chips. */
-function StaffPicker({
-  employees,
-  selected,
-  onToggle,
-  onClear,
-}: {
-  employees: { id: string; name: string; color: string }[];
-  selected: Set<string>;
-  onToggle: (id: string) => void;
-  onClear: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-  const picked = employees.filter((e) => selected.has(e.id));
-  return (
-    <div ref={root} className="relative">
-      <button
-        aria-expanded={open}
-        aria-haspopup="true"
-        onClick={() => setOpen((o) => !o)}
-        className={`chip border py-1 transition ${
-          picked.length
-            ? "border-transparent bg-slate-900 text-white"
-            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-        }`}
-      >
-        {picked.length ? (
-          <>
-            <span className="mr-1.5 flex -space-x-1">
-              {picked.slice(0, 4).map((e) => (
-                <span
-                  key={e.id}
-                  className="h-2.5 w-2.5 rounded-full ring-1 ring-slate-900"
-                  style={{ backgroundColor: e.color }}
-                />
-              ))}
-            </span>
-            {picked.length === 1
-              ? picked[0].name.split(" ")[0]
-              : `${picked.length} staff`}
-          </>
-        ) : (
-          "Staff"
-        )}
-        <ChevronDown size={12} className="ml-1" />
-      </button>
-      {open && (
-        <div
-          role="group"
-          aria-label="Filter by staff"
-          className="absolute left-0 top-full z-30 mt-1 flex w-72 max-w-[calc(100vw-2rem)] flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 shadow-lg sm:w-96"
-        >
-          {employees.map((e) => (
-            <FilterChip
-              key={e.id}
-              active={selected.has(e.id)}
-              color={e.color}
-              onClick={() => onToggle(e.id)}
-            >
-              {e.name.split(" ")[0]}
-            </FilterChip>
-          ))}
-          {picked.length > 0 && (
-            <button
-              className="chip w-full justify-center text-slate-500 hover:text-slate-800"
-              onClick={onClear}
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const VIEW_KEY = "shift-manager:schedule:view";
 const LAYOUT_KEY = "shift-manager:schedule:layout";
@@ -421,6 +331,7 @@ export function Schedule() {
   // "All positions" / "Everyone" are toggles: off reveals the detailed chips, on clears the filter.
   const [positionsOpen, setPositionsOpen] = useState(positionFilter.size > 0);
   const [staffOpen, setStaffOpen] = useState(employeeFilter.size > 0);
+  const [shiftsOpen, setShiftsOpen] = useState(false);
   // Bumped by Today so the phone list re-scrolls even when the range is already current.
   const [todayNonce, setTodayNonce] = useState(0);
   const goToday = () => {
@@ -674,24 +585,37 @@ export function Schedule() {
           )}
         </div>
 
-        {stacked && (
-          <div className="mb-2 flex items-center justify-end border-b border-slate-200 pb-2">
-            <DayPartToggle state={dayParts} compact />
-          </div>
-        )}
-
-        <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          <FilterChip
-            active={!positionsOpen}
-            onClick={() => {
+        {(() => {
+          const groups: {
+            key: string;
+            label: string;
+            open: boolean;
+            toggle: () => void;
+            chips: ReactNode;
+          }[] = [];
+          if (stacked)
+            groups.push({
+              key: "shifts",
+              label: "All shifts",
+              open: shiftsOpen,
+              toggle: () => {
+                if (shiftsOpen) {
+                  if (!dayParts.showDay) dayParts.toggle("day");
+                  if (!dayParts.showEvening) dayParts.toggle("evening");
+                }
+                setShiftsOpen(!shiftsOpen);
+              },
+              chips: <DayPartToggle state={dayParts} compact />,
+            });
+          groups.push({
+            key: "positions",
+            label: "All positions",
+            open: positionsOpen,
+            toggle: () => {
               if (positionsOpen) setPositionFilter(new Set());
               setPositionsOpen(!positionsOpen);
-            }}
-          >
-            All positions
-          </FilterChip>
-          {positionsOpen &&
-            scheduledPositions.map((p) => (
+            },
+            chips: scheduledPositions.map((p) => (
               <FilterChip
                 key={p}
                 active={positionFilter.has(p)}
@@ -699,35 +623,69 @@ export function Schedule() {
               >
                 {p}
               </FilterChip>
-            ))}
-          {positionsOpen && <span className="mx-1 h-5 w-px bg-slate-300" />}
-          <FilterChip
-            active={!staffOpen}
-            onClick={() => {
+            )),
+          });
+          groups.push({
+            key: "staff",
+            label: "Everyone",
+            open: staffOpen,
+            toggle: () => {
               if (staffOpen) setEmployeeFilter(new Set());
               setStaffOpen(!staffOpen);
-            }}
-          >
-            Everyone
-          </FilterChip>
-          {staffOpen && me && (
-            <FilterChip
-              active={employeeFilter.has(me.id)}
-              color={me.color}
-              onClick={() => toggleEmployee(me.id)}
-            >
-              Just me
-            </FilterChip>
-          )}
-          {staffOpen && isAdmin && scheduledEmployees.length > 0 && (
-            <StaffPicker
-              employees={scheduledEmployees}
-              selected={employeeFilter}
-              onToggle={toggleEmployee}
-              onClear={() => setEmployeeFilter(new Set())}
-            />
-          )}
-        </div>
+            },
+            chips: (
+              <>
+                {me && (
+                  <FilterChip
+                    active={employeeFilter.has(me.id)}
+                    color={me.color}
+                    onClick={() => toggleEmployee(me.id)}
+                  >
+                    Just me
+                  </FilterChip>
+                )}
+                {isAdmin &&
+                  scheduledEmployees.map((e) => (
+                    <FilterChip
+                      key={e.id}
+                      active={employeeFilter.has(e.id)}
+                      color={e.color}
+                      onClick={() => toggleEmployee(e.id)}
+                    >
+                      {e.name}
+                    </FilterChip>
+                  ))}
+              </>
+            ),
+          });
+          return (
+            <div className="mb-3 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {groups
+                  .filter((g) => !g.open)
+                  .map((g) => (
+                    <FilterChip key={g.key} active onClick={g.toggle}>
+                      {g.label}
+                    </FilterChip>
+                  ))}
+              </div>
+              {groups
+                .filter((g) => g.open)
+                .map((g) => (
+                  <div
+                    key={g.key}
+                    className="flex flex-wrap items-center gap-1.5"
+                  >
+                    <FilterChip active={false} onClick={g.toggle}>
+                      {g.label}
+                    </FilterChip>
+                    <span className="h-5 w-px bg-slate-300" />
+                    {g.chips}
+                  </div>
+                ))}
+            </div>
+          );
+        })()}
       </div>
 
       <div
