@@ -1,19 +1,19 @@
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useData } from '../data/DataContext'
-import type { Employee, EmployeeInput, Position } from '../types'
+import { ROLE_LABEL, type Employee, type EmployeeInput, type Position, type Role } from '../types'
 import { nextColor, PALETTE } from '../utils/colors'
 import { ErrorText, Modal } from './ui'
 
 export function EmployeeModal({ employee, onClose }: { employee: Employee | null; onClose: () => void }) {
-  const { employees, me, positions: orgPositions, createEmployee, updateEmployee, deleteEmployee } = useData()
+  const { employees, me, isOwner, positions: orgPositions, createEmployee, updateEmployee, deleteEmployee } = useData()
   const [name, setName] = useState(employee?.name ?? '')
   const [positions, setPositions] = useState<Position[]>(employee?.positions ?? ['Server'])
   const [email, setEmail] = useState(employee?.email ?? '')
   const [phone, setPhone] = useState(employee?.phone ?? '')
   const [color, setColor] = useState(employee?.color ?? nextColor(employees.map((e) => e.color)))
   const [active, setActive] = useState(employee?.active ?? true)
-  const [isManager, setIsManager] = useState(employee?.role === 'admin')
+  const [role, setRole] = useState<Role>(employee?.role ?? 'employee')
   const isSelf = !!employee && employee.id === me?.id
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -32,7 +32,7 @@ export function EmployeeModal({ employee, onClose }: { employee: Employee | null
       phone: phone.trim() || null,
       color,
       active,
-      role: isManager ? 'admin' : 'employee',
+      role,
     }
     setBusy(true)
     try {
@@ -125,11 +125,23 @@ export function EmployeeModal({ employee, onClose }: { employee: Employee | null
             ))}
           </div>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={isManager} disabled={isSelf} onChange={(e) => setIsManager(e.target.checked)} />
-          Manager (can edit the schedule, team and all offers)
-          {isSelf && <span className="text-xs text-slate-400">— you can't change your own access</span>}
-        </label>
+        <div>
+          <label className="label">Access</label>
+          <select className="input" value={role} disabled={isSelf || !isOwner} onChange={(e) => setRole(e.target.value as Role)}>
+            {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABEL[r]}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            {isSelf
+              ? "You can't change your own access."
+              : !isOwner
+                ? 'Only an owner can change access.'
+                : 'Managers edit the schedule, team and offers; owners also manage settings and access.'}
+          </p>
+        </div>
         {employee && (
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />

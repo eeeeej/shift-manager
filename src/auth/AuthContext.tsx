@@ -40,7 +40,7 @@ interface DemoAccount {
 
 function seedDemoAccounts(): DemoAccount[] {
   return [
-    { id: 'user-owner', email: 'owner@example.com', password: DEMO_PASSWORD, fullName: 'Owner', role: 'admin' },
+    { id: 'user-owner', email: 'owner@example.com', password: DEMO_PASSWORD, fullName: 'Owner', role: 'owner' },
     ...SEED_EMPLOYEES.map((e) => ({
       id: `user-${e.id}`,
       email: e.email!,
@@ -55,7 +55,7 @@ function readDemoAccounts(): DemoAccount[] {
   const raw = localStorage.getItem(DEMO_ACCOUNTS_KEY)
   if (raw) {
     try {
-      return JSON.parse(raw) as DemoAccount[]
+      return (JSON.parse(raw) as DemoAccount[]).map((a) => (a.id === 'user-owner' ? { ...a, role: 'owner' } : a))
     } catch {
       /* reseed */
     }

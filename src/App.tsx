@@ -31,6 +31,11 @@ function RequireAdmin() {
   return isAdmin ? <Outlet /> : <Navigate to="/" replace />
 }
 
+function RequireOwner() {
+  const { isOwner } = useData()
+  return isOwner ? <Outlet /> : <Navigate to="/" replace />
+}
+
 function PublicOnly() {
   const { user, loading } = useAuth()
   if (loading) return <Spinner full />
@@ -54,6 +59,8 @@ export default function App() {
         <Route path="/new" element={<NewOrganization />} />
         <Route element={<RequireAdmin />}>
           <Route path="/team" element={<Team />} />
+        </Route>
+        <Route element={<RequireOwner />}>
           <Route path="/settings" element={<OrgSettings />} />
         </Route>
       </Route>

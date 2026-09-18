@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { EmployeeModal } from '../components/EmployeeModal'
 import { Avatar, EmptyState, PageHeader } from '../components/ui'
 import { useData } from '../data/DataContext'
-import type { Employee } from '../types'
+import { isManagerRole, type Employee } from '../types'
 
 export function Team() {
   const { employees, inviteEmployee, org } = useData()
@@ -45,7 +45,7 @@ export function Team() {
     <div>
       <PageHeader
         title="Team"
-        subtitle={`${employees.filter((e) => e.active).length} active staff · ${employees.filter((e) => e.active && e.role === 'admin').length} managers`}
+        subtitle={`${employees.filter((e) => e.active).length} active staff · ${employees.filter((e) => e.active && isManagerRole(e.role)).length} managers`}
         actions={
           <>
             <label className="flex items-center gap-1.5 text-sm text-slate-600">
@@ -71,9 +71,9 @@ export function Team() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate font-medium">{e.name}</span>
-                  {e.role === 'admin' && (
-                    <span className="chip bg-indigo-100 text-indigo-800" title="Owner / manager">
-                      <ShieldCheck size={10} className="mr-1" /> manager
+                  {isManagerRole(e.role) && (
+                    <span className="chip bg-indigo-100 text-indigo-800">
+                      <ShieldCheck size={10} className="mr-1" /> {e.role === 'owner' ? 'owner' : 'manager'}
                     </span>
                   )}
                   {e.userId ? (

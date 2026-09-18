@@ -68,7 +68,7 @@ export function Login() {
               <button
                 key={a.email}
                 type="button"
-                className={`chip border ${a.role === 'admin' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white hover:bg-slate-100'}`}
+                className={`chip border ${a.role !== 'employee' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white hover:bg-slate-100'}`}
                 onClick={() => run(() => signIn(a.email, DEMO_PASSWORD))}
               >
                 {a.label}
