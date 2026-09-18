@@ -7,7 +7,8 @@ import { isManagerRole, type AccountStatus, type Employee } from '../types'
 
 const lastSeen = (iso: string) => {
   const d = new Date(iso)
-  const days = Math.floor((Date.now() - d.getTime()) / 86_400_000)
+  const midnight = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const days = Math.round((midnight(new Date()) - midnight(d)) / 86_400_000)
   if (days === 0) return `today ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
   if (days === 1) return 'yesterday'
   if (days < 7) return d.toLocaleDateString(undefined, { weekday: 'short' })
