@@ -1,13 +1,33 @@
 import { Link2, Mail, Pencil, Phone, Plus, Send, ShieldCheck } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EmployeeModal } from '../components/EmployeeModal'
 import { Avatar, EmptyState, PageHeader } from '../components/ui'
 import { useData } from '../data/DataContext'
-import { isManagerRole, type Employee } from '../types'
+import { isManagerRole, type AccountStatus, type Employee } from '../types'
+
+const lastSeen = (iso: string) => {
+  const d = new Date(iso)
+  const days = Math.floor((Date.now() - d.getTime()) / 86_400_000)
+  if (days === 0) return `today ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+  if (days === 1) return 'yesterday'
+  if (days < 7) return d.toLocaleDateString(undefined, { weekday: 'short' })
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
 
 export function Team() {
-  const { employees, inviteEmployee, org } = useData()
+  const { employees, inviteEmployee, accountStatus, org, isAdmin } = useData()
   const [editing, setEditing] = useState<Employee | null | 'new'>(null)
+  const [status, setStatus] = useState<Map<string, AccountStatus>>(new Map())
+  useEffect(() => {
+    if (!isAdmin || !org) return
+    let live = true
+    accountStatus()
+      .then((rows) => live && setStatus(new Map(rows.map((r) => [r.employeeId, r]))))
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [isAdmin, org, employees, accountStatus])
   const [showInactive, setShowInactive] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -76,13 +96,27 @@ export function Team() {
                       <ShieldCheck size={10} className="mr-1" /> {e.role === 'owner' ? 'owner' : 'manager'}
                     </span>
                   )}
-                  {e.userId ? (
-                    <span className="chip bg-emerald-100 text-emerald-800" title="Linked to a login">
-                      <Link2 size={10} className="mr-1" /> linked
-                    </span>
-                  ) : (
-                    <span className="chip bg-slate-100 text-slate-500">no login</span>
-                  )}
+                  {(() => {
+                    const st = status.get(e.id)
+                    if (!e.userId) return <span className="chip bg-slate-100 text-slate-500">no login</span>
+                    if (st && !st.confirmedAt)
+                      return (
+                        <span className="chip bg-amber-100 text-amber-800" title="Registered but hasn't clicked the confirmation email yet">
+                          <Mail size={10} className="mr-1" /> unconfirmed
+                        </span>
+                      )
+                    if (st?.lastSeenAt)
+                      return (
+                        <span className="chip bg-emerald-100 text-emerald-800" title={`Last active ${new Date(st.lastSeenAt).toLocaleString()}`}>
+                          <Link2 size={10} className="mr-1" /> active · {lastSeen(st.lastSeenAt)}
+                        </span>
+                      )
+                    return (
+                      <span className="chip bg-emerald-100 text-emerald-800" title="Linked to a login">
+                        <Link2 size={10} className="mr-1" /> linked
+                      </span>
+                    )
+                  })()}
                   {!e.active && <span className="chip bg-slate-100 text-slate-500">inactive</span>}
                 </div>
                 <div className="mt-0.5 flex flex-wrap gap-1">

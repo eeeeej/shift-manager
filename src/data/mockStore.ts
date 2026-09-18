@@ -1,4 +1,4 @@
-import { DEFAULT_POSITIONS, type Employee, type EmployeeInput, type NewOrganizationInput, type Organization, type OrganizationInput, type Shift, type ShiftInput, type ShiftOffer } from '../types'
+import { DEFAULT_POSITIONS, type AccountStatus, type Employee, type EmployeeInput, type NewOrganizationInput, type Organization, type OrganizationInput, type Shift, type ShiftInput, type ShiftOffer } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 import { addDays, startOfWeek, todayKey } from '../utils/time'
 import { SEED_EMPLOYEES, SEED_OFFERS, SEED_SHIFTS } from './seed'
@@ -160,6 +160,13 @@ export class MockStore implements DataStore {
       s.employeeId === id ? { ...s, employeeId: null, status: 'open' } : s,
     )
     this.persist()
+  }
+
+  async accountStatus(): Promise<AccountStatus[]> {
+    const seen = new Date(Date.now() - 3 * 3600_000).toISOString()
+    return this.snap.employees
+      .filter((e) => e.userId)
+      .map((e) => ({ employeeId: e.id, confirmedAt: seen, lastSeenAt: seen }))
   }
 
   async inviteEmployee(id: string): Promise<void> {

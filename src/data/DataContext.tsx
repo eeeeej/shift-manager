@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
+  type AccountStatus,
   DEFAULT_POSITIONS,
   isManagerRole,
   type Employee,
@@ -65,6 +66,8 @@ export interface DataApi {
   updateEmployee(id: string, patch: Partial<EmployeeInput>): Promise<void>
   deleteEmployee(id: string): Promise<void>
   inviteEmployee(id: string): Promise<void>
+  /** Manager-only login status per linked employee. */
+  accountStatus(): Promise<AccountStatus[]>
 
   createOffer(input: OfferInput): Promise<void>
   claimOffer(offerId: string, claimerEmployeeId: string): Promise<void>
@@ -251,6 +254,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updateEmployee: (id, patch) => run(() => store.updateEmployee(id, patch)),
       deleteEmployee: (id) => run(() => store.deleteEmployee(id)),
       inviteEmployee: (id) => store.inviteEmployee(id),
+      accountStatus: () => store.accountStatus(requireOrg()),
       createOffer: (input) => run(() => store.createOffer(input)),
       claimOffer: (offerId, claimer) => run(() => store.claimOffer(offerId, claimer)),
       cancelOffer: (offerId, outcome) =>
