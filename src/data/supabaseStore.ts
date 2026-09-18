@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Employee, EmployeeInput, OfferStatus, OrgBrand, Organization, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
+import type { Employee, EmployeeInput, NewOrganizationInput, OfferStatus, OrgBrand, Organization, OrganizationInput, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 
 interface OrgRow {
@@ -139,6 +139,30 @@ export class SupabaseStore implements DataStore {
   async loadOrganizations(): Promise<Organization[]> {
     const res = await this.client.from('organizations').select('*').order('name')
     return unwrap<OrgRow[]>(res).map(toOrg)
+  }
+
+  async selfServeOrgsEnabled(): Promise<boolean> {
+    const res = await this.client.from('platform_settings').select('value').eq('key', 'allow_self_serve_orgs').maybeSingle()
+    return unwrap<{ value: boolean } | null>(res)?.value === true
+  }
+
+  async createOrganization(input: NewOrganizationInput): Promise<string> {
+    const res = await this.client.rpc('create_organization', {
+      p_name: input.name,
+      p_slug: input.slug,
+      p_positions: input.positions ?? null,
+    })
+    return unwrap<string>(res)
+  }
+
+  async updateOrganization(id: string, patch: Partial<OrganizationInput>): Promise<Organization> {
+    const row: Partial<OrgRow> = {}
+    if (patch.name !== undefined) row.name = patch.name
+    if (patch.timezone !== undefined) row.timezone = patch.timezone
+    if (patch.positions !== undefined) row.positions = patch.positions
+    if (patch.brand !== undefined) row.brand = patch.brand
+    const res = await this.client.from('organizations').update(row).eq('id', id).select('*').single()
+    return toOrg(unwrap<OrgRow>(res))
   }
 
   async load(orgId: string): Promise<Snapshot> {

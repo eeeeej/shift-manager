@@ -9,6 +9,7 @@ export function Register() {
   const { signUp, verifyOtp, signInWithGoogle, signInWithApple } = useAuth()
   const [params] = useSearchParams()
   const invited = params.get('email')?.trim() ?? ''
+  const orgName = params.get('org')?.trim() ?? ''
   const [step, setStep] = useState<'details' | 'otp'>('details')
   const [name, setName] = useState(params.get('name')?.trim() ?? '')
   const [email, setEmail] = useState(invited)
@@ -80,10 +81,10 @@ export function Register() {
 
   return (
     <AuthShell
-      title="Create account"
+      title={orgName ? `Join ${orgName}` : 'Create account'}
       subtitle={
         invited
-          ? 'Your manager invited you — just pick a password (or continue with Google).'
+          ? `Your manager${orgName ? ` at ${orgName}` : ''} invited you — just pick a password (or continue with Google).`
           : 'Use the email your manager has on file. Only invited emails can create an account.'
       }
     >

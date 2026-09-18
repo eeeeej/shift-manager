@@ -75,3 +75,12 @@ PR 1 should land before publish-week / time-off (each of those adds a table that
 - RLS regressions are the only real risk; mitigated by the scripted two-org test and running PR 1 against a Supabase branch before production.
 - Existing installs/subscriptions are unaffected (same URL, same VAPID keys).
 - `POSITIONS` is referenced widely in the UI; moving it to org data is the largest mechanical change in PR 1.
+
+## 10. Billing ideation (not scheduled)
+
+Per org, two candidate rules that can also be combined:
+
+- **Employee threshold**: free up to X active staff; the (X+1)th active employee on Team is the enforcement point. Deactivated staff don't count.
+- **Time-based trial**: everything free for the first N months from `organizations.created_at`, then paid. `billing_status` moves `trialing → active | past_due`.
+
+Both use the existing `plan` / `employee_limit` / `billing_status` columns; Stripe Checkout + Customer Portal via one Edge Function + webhook when the time comes.

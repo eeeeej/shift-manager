@@ -6,7 +6,7 @@ import { useData } from '../data/DataContext'
 import type { Employee } from '../types'
 
 export function Team() {
-  const { employees, inviteEmployee } = useData()
+  const { employees, inviteEmployee, org } = useData()
   const [editing, setEditing] = useState<Employee | null | 'new'>(null)
   const [showInactive, setShowInactive] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -24,6 +24,7 @@ export function Team() {
     const url = new URL('/register', window.location.origin)
     if (e.email) url.searchParams.set('email', e.email)
     url.searchParams.set('name', e.name)
+    if (org) url.searchParams.set('org', org.brand.displayName || org.name)
     try {
       await navigator.clipboard.writeText(url.toString())
       flash(`Invite link for ${e.name} copied — paste it into a text`)
