@@ -1,9 +1,20 @@
-import type { Employee, EmployeeInput, NewOrganizationInput, Organization, OrganizationInput, Shift, ShiftInput, ShiftOffer } from '../types'
+import type {
+  Employee,
+  EmployeeInput,
+  NewOrganizationInput,
+  Organization,
+  OrganizationInput,
+  PublishedWeek,
+  Shift,
+  ShiftInput,
+  ShiftOffer,
+} from '../types'
 
 export interface Snapshot {
   employees: Employee[]
   shifts: Shift[]
   offers: ShiftOffer[]
+  publishedWeeks: PublishedWeek[]
 }
 
 export interface OfferInput {
@@ -28,6 +39,8 @@ export interface DataStore {
   deleteShift(id: string): Promise<void>
   createShifts(orgId: string, inputs: ShiftInput[]): Promise<Shift[]>
   deleteShifts(ids: string[]): Promise<void>
+  /** Publish every draft week from the current week through the week containing `throughDate`. */
+  publishWeeks(orgId: string, throughDate: string, byName: string): Promise<void>
 
   createEmployee(orgId: string, input: EmployeeInput): Promise<Employee>
   updateEmployee(id: string, patch: Partial<EmployeeInput>): Promise<Employee>

@@ -51,6 +51,12 @@ interface OfferRow {
   resolved_by_name: string | null
 }
 
+interface PublishedWeekRow {
+  week_start: string
+  published_at: string
+  published_by: { full_name: string | null; email: string } | null
+}
+
 const toOrg = (r: OrgRow): Organization => ({
   id: r.id,
   name: r.name,
@@ -166,15 +172,22 @@ export class SupabaseStore implements DataStore {
   }
 
   async load(orgId: string): Promise<Snapshot> {
-    const [emps, shifts, offers] = await Promise.all([
+    const [emps, shifts, offers, weeks] = await Promise.all([
       this.client.from('employees').select('*').eq('org_id', orgId).order('name'),
       this.client.from('shifts').select('*').eq('org_id', orgId).order('shift_date').order('start_min'),
       this.client.from('shift_offers').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
+      this.client.from('published_weeks').select('week_start,published_at,published_by:profiles(full_name,email)').eq('org_id', orgId),
     ])
     return {
       employees: unwrap<EmployeeRow[]>(emps).map(toEmployee),
       shifts: unwrap<ShiftRow[]>(shifts).map(toShift),
       offers: unwrap<OfferRow[]>(offers).map(toOffer),
+      // Supabase's type inference can't tell a to-one join from to-many, so assert the row shape.
+      publishedWeeks: (unwrap<unknown[]>(weeks) as PublishedWeekRow[]).map((w) => ({
+        weekStart: w.week_start,
+        publishedAt: w.published_at,
+        publishedBy: w.published_by ? w.published_by.full_name || w.published_by.email : null,
+      })),
     }
   }
 
@@ -197,6 +210,11 @@ export class SupabaseStore implements DataStore {
     if (inputs.length === 0) return []
     const res = await this.client.from('shifts').insert(inputs.map((i) => ({ ...shiftPatch(i), org_id: orgId }))).select('*')
     return unwrap<ShiftRow[]>(res).map(toShift)
+  }
+
+  async publishWeeks(orgId: string, throughDate: string): Promise<void> {
+    const { error } = await this.client.rpc('publish_weeks', { p_org: orgId, p_through: throughDate })
+    if (error) throw new Error(error.message)
   }
 
   async deleteShifts(ids: string[]): Promise<void> {

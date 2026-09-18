@@ -10,6 +10,8 @@ interface Props extends DayCellCallbacks {
   shifts: Shift[]
   employees: Employee[]
   onCopyWeek?: (weekStart: string) => void
+  /** Managers only: marks weeks staff can't see yet. */
+  isDraftWeek?: (weekStart: string) => boolean
   onNeedBefore: () => void
   onNeedAfter: () => void
   /** Week whose header is currently at the top of the viewport. */
@@ -35,6 +37,7 @@ export function WeekFeed({
   shifts,
   employees,
   onCopyWeek,
+  isDraftWeek,
   onNeedBefore,
   onNeedAfter,
   onVisibleWeek,
@@ -150,6 +153,7 @@ export function WeekFeed({
               <h3 className="sticky top-0 z-10 flex items-center gap-2 border-y border-slate-200 bg-white/95 px-3 py-1.5 text-sm font-semibold text-slate-900 backdrop-blur">
                 {formatWeek(week)}
                 {isThisWeek && <span className="chip bg-slate-900 text-white">This week</span>}
+                {isDraftWeek?.(week) && <span className="chip bg-amber-100 text-amber-800" title="Not visible to staff until published">Draft</span>}
               </h3>
               <div className={`grid ${cols} border-b border-slate-200`}>
                 {gutter && (

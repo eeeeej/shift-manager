@@ -1,5 +1,6 @@
 import { DEFAULT_POSITIONS, type Employee, type EmployeeInput, type NewOrganizationInput, type Organization, type OrganizationInput, type Shift, type ShiftInput, type ShiftOffer } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
+import { addDays, startOfWeek, todayKey } from '../utils/time'
 import { SEED_EMPLOYEES, SEED_OFFERS, SEED_SHIFTS } from './seed'
 import { setDemoAccountRole } from '../auth/AuthContext'
 
@@ -27,12 +28,22 @@ function readSnapshot(): Snapshot {
     if (raw) {
       const snap = JSON.parse(raw) as Snapshot
       snap.employees = snap.employees.map((e) => ({ ...e, role: e.role ?? 'employee' }))
+      snap.publishedWeeks ??= seedPublishedWeeks(snap.shifts)
       return snap
     }
   } catch {
     /* fall through to seed */
   }
-  return { employees: SEED_EMPLOYEES, shifts: SEED_SHIFTS, offers: SEED_OFFERS }
+  return { employees: SEED_EMPLOYEES, shifts: SEED_SHIFTS, offers: SEED_OFFERS, publishedWeeks: seedPublishedWeeks(SEED_SHIFTS) }
+}
+
+/** Mirrors the migration backfill: every week that already has shifts is published. */
+function seedPublishedWeeks(shifts: Shift[]) {
+  return [...new Set(shifts.map((s) => startOfWeek(s.date)))].map((weekStart) => ({
+    weekStart,
+    publishedAt: new Date(0).toISOString(),
+    publishedBy: null,
+  }))
 }
 
 /** Demo counterpart of the invite-only signup trigger: active employee emails. */
@@ -108,6 +119,15 @@ export class MockStore implements DataStore {
     this.snap.shifts.push(...created)
     this.persist()
     return created
+  }
+
+  async publishWeeks(_orgId: string, throughDate: string, byName: string): Promise<void> {
+    const have = new Set(this.snap.publishedWeeks.map((w) => w.weekStart))
+    const last = startOfWeek(throughDate)
+    for (let w = startOfWeek(todayKey()); w <= last; w = addDays(w, 7)) {
+      if (!have.has(w)) this.snap.publishedWeeks.push({ weekStart: w, publishedAt: new Date().toISOString(), publishedBy: byName })
+    }
+    this.persist()
   }
 
   async deleteShifts(ids: string[]): Promise<void> {

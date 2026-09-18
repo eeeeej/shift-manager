@@ -11,6 +11,8 @@ interface Props extends DayCellCallbacks {
   employees: Employee[]
   /** Copy an entire week (Sunday key) — shows a gutter button per week row. */
   onCopyWeek?: (weekStart: string) => void
+  /** Managers only: marks weeks staff can't see yet. */
+  isDraftWeek?: (weekStart: string) => boolean
   /** Called when the user scrolls near the top / bottom; parent prepends / appends a month. */
   onNeedBefore: () => void
   onNeedAfter: () => void
@@ -54,6 +56,7 @@ export function MonthGrid({
   shifts,
   employees,
   onCopyWeek,
+  isDraftWeek,
   onNeedBefore,
   onNeedAfter,
   onVisibleMonth,
@@ -201,7 +204,15 @@ export function MonthGrid({
                 className={`group/week grid ${gutter ? 'grid-cols-[1.75rem_repeat(7,minmax(0,1fr))]' : 'grid-cols-7'} border-b border-slate-200`}
               >
                 {gutter && (
-                  <div className="flex items-start justify-center border-r border-slate-200 bg-slate-50/60 pt-2">
+                  <div
+                    className={`flex flex-col items-center gap-1 border-r border-slate-200 pt-2 ${isDraftWeek?.(week[0]) ? 'bg-amber-50' : 'bg-slate-50/60'}`}
+                    title={isDraftWeek?.(week[0]) ? 'Draft — not visible to staff until published' : undefined}
+                  >
+                    {isDraftWeek?.(week[0]) && (
+                      <span className="text-[9px] font-semibold uppercase tracking-wide text-amber-700" style={{ writingMode: 'vertical-rl' }}>
+                        Draft
+                      </span>
+                    )}
                     <button
                       className="rounded p-0.5 text-slate-400 opacity-0 transition hover:bg-slate-200 hover:text-slate-700 group-hover/week:opacity-100 focus:opacity-100"
                       title={`Copy week of ${fromDateKey(week[0]).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} to another week`}

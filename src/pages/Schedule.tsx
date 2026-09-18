@@ -3,6 +3,7 @@ import {
   ChevronRight,
   Copy,
   Plus,
+  Send,
 } from "lucide-react";
 import {
   useCallback,
@@ -92,6 +93,8 @@ export function Schedule() {
     isAdmin,
     me,
     employeeById,
+    isWeekPublished,
+    publishThrough,
     createShift,
     updateShift,
     createShifts,
@@ -461,6 +464,39 @@ export function Schedule() {
   const openShift = (shift: Shift) =>
     isAdmin ? setDraft({ ...shift }) : setDetail(shift);
 
+  // Publish covers every draft week from now through the visible week (or the month's last week).
+  const publishEnd = isMonth ? monthRange(visibleMonth).end : focusRange[focusRange.length - 1];
+  const publishTarget = startOfWeek(publishEnd);
+  const draftWeeks = useMemo(() => {
+    const out: string[] = [];
+    for (let w = startOfWeek(todayKey()); w <= publishTarget; w = addDays(w, 7)) {
+      if (!isWeekPublished(w)) out.push(w);
+    }
+    return out;
+  }, [publishTarget, isWeekPublished]);
+  const [publishing, setPublishing] = useState(false);
+  const publish = async () => {
+    const n = draftWeeks.length;
+    const from = fromDateKey(draftWeeks[0]);
+    const to = fromDateKey(addDays(publishTarget, 6));
+    const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const affected = new Set(
+      shifts.filter((s) => s.employeeId && draftWeeks.includes(startOfWeek(s.date))).map((s) => s.employeeId),
+    ).size;
+    if (
+      !confirm(
+        `Publish ${n === 1 ? "the week of" : `${n} weeks,`} ${fmt(from)} – ${fmt(to)}? Staff will see these shifts and ${affected} ${affected === 1 ? "person" : "people"} will be notified.`,
+      )
+    )
+      return;
+    setPublishing(true);
+    try {
+      await publishThrough(publishEnd);
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const first = fromDateKey(focusRange[0]);
   const last = fromDateKey(focusRange[focusRange.length - 1]);
   const title = isMonth
@@ -487,9 +523,10 @@ export function Schedule() {
         <PageHeader
           title={isDesktop ? "Schedule" : formatDateShort(topDay ?? range[0])}
           subtitle={
-            !isDesktop && days === 1 && !isMonth
+            (!isDesktop && days === 1 && !isMonth
               ? `${range[0] === todayKey() ? "Today · " : ""}${visible.length} shifts`
-              : title
+              : title) +
+            (isAdmin && !isMonth && !isWeekFeed && !isWeekPublished(focusRange[0]) ? " · Draft" : "")
           }
           className="mb-2 md:mb-4 short:hidden"
           actions={
@@ -502,6 +539,16 @@ export function Schedule() {
                     title="Copy this week's shifts to another week"
                   >
                     <Copy size={16} /> Copy week
+                  </button>
+                )}
+                {draftWeeks.length > 0 && (
+                  <button
+                    className="btn-secondary"
+                    onClick={publish}
+                    disabled={publishing}
+                    title={`Make ${draftWeeks.length === 1 ? "this week" : `${draftWeeks.length} weeks`} visible to staff and notify them`}
+                  >
+                    <Send size={16} /> Publish {isMonth ? "month" : "week"}
                   </button>
                 )}
                 <button
@@ -722,6 +769,7 @@ export function Schedule() {
             onQuickAdd={isAdmin ? createShift : undefined}
             onMoveShift={isAdmin ? moveShift : undefined}
             onCopyWeek={isAdmin ? setCopying : undefined}
+            isDraftWeek={isAdmin ? (w) => !isWeekPublished(w) : undefined}
             defaultPosition={position || "Server"}
           />
         ) : isWeekFeed ? (
@@ -746,6 +794,7 @@ export function Schedule() {
             onQuickAdd={isAdmin ? createShift : undefined}
             onMoveShift={isAdmin ? moveShift : undefined}
             onCopyWeek={isAdmin ? setCopying : undefined}
+            isDraftWeek={isAdmin ? (w) => !isWeekPublished(w) : undefined}
             defaultPosition={position || "Server"}
           />
         ) : (isDesktop && days > 1 && layout === "list") ||

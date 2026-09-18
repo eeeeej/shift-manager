@@ -74,6 +74,14 @@ export interface Employee {
 
 export type ShiftStatus = 'scheduled' | 'open'
 
+/** A week (Sunday start, YYYY-MM-DD) whose shifts are visible to staff. */
+export interface PublishedWeek {
+  weekStart: string
+  publishedAt: string
+  /** Display name of who published it; null for weeks that predate publishing. */
+  publishedBy: string | null
+}
+
 export interface Shift {
   id: string
   employeeId: string | null
