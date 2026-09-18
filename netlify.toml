@@ -7,6 +7,12 @@
   # Web Push application server key (public half; private half lives in Supabase function secrets)
   VITE_VAPID_PUBLIC_KEY = "BObkOB9xYHkryNJaONInmMfh_ZQVpV1FgpzTZlGwwfRi_t-u3lh5xGwFYpzJxFb5wliqVHwrJvwMe6CHn_l_UAQ"
 
+# PR deploy previews run in demo mode (LocalStorage data) so they never touch
+# the production database, whose schema may lag behind the branch.
+[context.deploy-preview.environment]
+  VITE_SUPABASE_URL = ""
+  VITE_SUPABASE_ANON_KEY = ""
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
