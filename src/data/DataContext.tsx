@@ -8,6 +8,7 @@ import {
   type Organization,
   type OrganizationInput,
   type Position,
+  type PublishedWeek,
   type Shift,
   type ShiftInput,
   type ShiftOffer,
@@ -18,6 +19,7 @@ import { useAuth } from '../auth/AuthContext'
 import type { DataStore, OfferInput } from './store'
 import { MockStore } from './mockStore'
 import { SupabaseStore } from './supabaseStore'
+import { startOfWeek, todayKey } from '../utils/time'
 
 export interface DataApi {
   /** Organizations the signed-in user can access. */
@@ -35,6 +37,11 @@ export interface DataApi {
   employees: Employee[]
   shifts: Shift[]
   offers: ShiftOffer[]
+  /** Weeks visible to staff. Weeks up to and including the current one are always published. */
+  publishedWeeks: PublishedWeek[]
+  isWeekPublished(date: string): boolean
+  /** Manager: publish every draft week from the current week through the one containing `date`. */
+  publishThrough(date: string): Promise<void>
   loading: boolean
   error: string | null
   /** The employee record linked to the signed-in user, if any. */
@@ -67,7 +74,7 @@ export interface DataApi {
 const DataContext = createContext<DataApi | null>(null)
 
 const store: DataStore = isDemoMode ? new MockStore() : new SupabaseStore(supabase!)
-const EMPTY: Snapshot = { employees: [], shifts: [], offers: [] }
+const EMPTY: Snapshot = { employees: [], shifts: [], offers: [], publishedWeeks: [] }
 const ORG_KEY = 'shift-manager:org'
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -77,6 +84,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [rawEmployees, setEmployees] = useState<Employee[]>([])
   const [rawShifts, setShifts] = useState<Shift[]>([])
   const [rawOffers, setOffers] = useState<ShiftOffer[]>([])
+  const [rawWeeks, setWeeks] = useState<PublishedWeek[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selfServe, setSelfServe] = useState(false)
@@ -104,6 +112,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setEmployees([])
         setShifts([])
         setOffers([])
+        setWeeks([])
         setError(null)
         return
       }
@@ -111,6 +120,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setEmployees(snap.employees)
       setShifts(snap.shifts)
       setOffers(snap.offers)
+      setWeeks(snap.publishedWeeks)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -142,6 +152,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' }, soon)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_offers' }, soon)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'published_weeks' }, soon)
       .subscribe()
     return () => {
       clearTimeout(timer)
@@ -152,8 +163,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [user, reload])
 
   const employees = user ? rawEmployees : EMPTY.employees
-  const shifts = user ? rawShifts : EMPTY.shifts
-  const offers = user ? rawOffers : EMPTY.offers
+  const publishedWeeks = user ? rawWeeks : EMPTY.publishedWeeks
 
   const me = useMemo(() => {
     if (!user) return null
@@ -168,6 +178,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const isAdmin = Boolean(user?.isSuperadmin) || isManagerRole(membership?.role) || isManagerRole(me?.role)
   const isOwner = Boolean(user?.isSuperadmin) || membership?.role === 'owner' || me?.role === 'owner'
   const positions = org?.positions ?? DEFAULT_POSITIONS
+  const publishedSet = useMemo(() => new Set(publishedWeeks.map((w) => w.weekStart)), [publishedWeeks])
+  const isWeekPublished = useCallback(
+    (date: string) => {
+      const w = startOfWeek(date)
+      return w <= startOfWeek(todayKey()) || publishedSet.has(w)
+    },
+    [publishedSet],
+  )
+  // RLS already hides drafts from staff; this keeps demo mode honest and the UI consistent.
+  const shifts = useMemo(() => {
+    if (!user) return EMPTY.shifts
+    return isAdmin ? rawShifts : rawShifts.filter((s) => isWeekPublished(s.date))
+  }, [user, isAdmin, rawShifts, isWeekPublished])
+  const offers = useMemo(() => {
+    if (!user) return EMPTY.offers
+    if (isAdmin) return rawOffers
+    const visible = new Set(shifts.map((s) => s.id))
+    return rawOffers.filter((o) => visible.has(o.shiftId))
+  }, [user, isAdmin, rawOffers, shifts])
   const canCreateOrg = Boolean(user?.isSuperadmin) || selfServe
   const requireOrg = useCallback(() => {
     if (!org) throw new Error('No organization selected')
@@ -198,6 +227,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       employees,
       shifts,
       offers,
+      publishedWeeks,
+      isWeekPublished,
+      publishThrough: (date) => run(() => store.publishWeeks(requireOrg(), date, me?.name ?? user?.fullName ?? user?.email ?? '')),
       loading,
       error,
       me,
@@ -224,7 +256,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cancelOffer: (offerId, outcome) =>
         run(() => store.cancelOffer(offerId, me?.name ?? user?.fullName ?? user?.email, outcome)),
     }),
-    [orgs, org, setOrg, canCreateOrg, positions, employees, shifts, offers, loading, error, me, isAdmin, isOwner, reload, run, user, requireOrg],
+    [orgs, org, setOrg, canCreateOrg, positions, employees, shifts, offers, publishedWeeks, isWeekPublished, loading, error, me, isAdmin, isOwner, reload, run, user, requireOrg],
   )
 
   return <DataContext.Provider value={api}>{children}</DataContext.Provider>

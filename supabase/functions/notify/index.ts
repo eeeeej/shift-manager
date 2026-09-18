@@ -31,10 +31,17 @@ interface OfferRow {
   status: 'open' | 'claimed' | 'cancelled' | 'reassigned'
 }
 
+interface PublishRow {
+  org_id: string
+  from_date: string
+  through_date: string
+  published_by: string | null
+}
+
 interface Payload {
-  type: Op
-  table: 'shifts' | 'shift_offers'
-  record: ShiftRow | OfferRow | null
+  type: Op | 'PUBLISH'
+  table: 'shifts' | 'shift_offers' | 'published_weeks'
+  record: ShiftRow | OfferRow | PublishRow | null
   old_record: ShiftRow | OfferRow | null
 }
 
@@ -76,10 +83,10 @@ function fmtRange(s: ShiftRow): string {
   return `${fmtTime(s.start_min)}–${s.end_min >= CLOSE_MIN ? 'Close' : fmtTime(s.end_min)}`
 }
 
-function fmtDate(key: string): string {
+function fmtDate(key: string, weekday = true): string {
   const [y, m, d] = key.split('-').map(Number)
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
-    weekday: 'short',
+    ...(weekday ? { weekday: 'short' } : {}),
     month: 'short',
     day: 'numeric',
     timeZone: 'UTC',
@@ -97,7 +104,7 @@ async function loadEmployees(orgId: string): Promise<Map<string, Employee>> {
 }
 
 async function adminUserIds(orgId: string): Promise<string[]> {
-  const { data, error } = await admin.from('memberships').select('user_id').eq('org_id', orgId).eq('role', 'admin')
+  const { data, error } = await admin.from('memberships').select('user_id').eq('org_id', orgId).in('role', ['admin', 'owner'])
   if (error) throw error
   return (data as { user_id: string }[]).map((m) => m.user_id)
 }
@@ -113,6 +120,34 @@ async function plan(p: Payload): Promise<Map<string, Note>> {
   const orgId = (p.record ?? p.old_record)?.org_id
   if (!orgId) return out
   const emps = await loadEmployees(orgId)
+
+  if (p.table === 'published_weeks' && p.record) {
+    const r = p.record as PublishRow
+    const { data, error } = await admin
+      .from('shifts')
+      .select('employee_id')
+      .eq('org_id', orgId)
+      .gte('shift_date', r.from_date)
+      .lte('shift_date', r.through_date)
+      .not('employee_id', 'is', null)
+    if (error) throw error
+    const counts = new Map<string, number>()
+    for (const row of data as { employee_id: string }[]) counts.set(row.employee_id, (counts.get(row.employee_id) ?? 0) + 1)
+    const range = `${fmtDate(r.from_date, false)} – ${fmtDate(r.through_date, false)}`
+    for (const [empId, n] of counts) {
+      const e = emps.get(empId)
+      if (e?.user_id && e.active && (r.published_by === null || e.user_id !== r.published_by)) {
+        out.set(e.user_id, {
+          title: 'Schedule posted',
+          body: `${range} is up — you're on ${n} shift${n === 1 ? '' : 's'}.`,
+          url: '/schedule',
+          tag: `publish-${r.from_date}`,
+        })
+      }
+    }
+    return out
+  }
+
   const userOf = (empId: string | null | undefined) => (empId ? emps.get(empId)?.user_id ?? null : null)
   const nameOf = (empId: string | null | undefined) => (empId ? emps.get(empId)?.name ?? 'Someone' : 'Someone')
   const add = (userId: string | null, note: Note) => {
