@@ -8,7 +8,9 @@ import { ErrorText, Modal } from './ui'
 export function EmployeeModal({ employee, onClose }: { employee: Employee | null; onClose: () => void }) {
   const { employees, me, isOwner, positions: orgPositions, createEmployee, updateEmployee, deleteEmployee } = useData()
   const [name, setName] = useState(employee?.name ?? '')
-  const [positions, setPositions] = useState<Position[]>(employee?.positions ?? ['Server'])
+  const [positions, setPositions] = useState<Position[]>(
+    employee?.positions.filter((p) => orgPositions.includes(p)) ?? orgPositions.slice(0, 1),
+  )
   const [email, setEmail] = useState(employee?.email ?? '')
   const [phone, setPhone] = useState(employee?.phone ?? '')
   const [color, setColor] = useState(employee?.color ?? nextColor(employees.map((e) => e.color)))
