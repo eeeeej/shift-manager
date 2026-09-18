@@ -1,8 +1,9 @@
-import { Link2, Mail, Pencil, Phone, Plus, Send, ShieldCheck } from 'lucide-react'
+import { Link2, Mail, Pencil, Phone, Plus, Send, ShieldCheck, Smartphone } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { EmployeeModal } from '../components/EmployeeModal'
 import { Avatar, EmptyState, PageHeader } from '../components/ui'
 import { useData } from '../data/DataContext'
+import { installUrl } from '../lib/install'
 import { isManagerRole, type AccountStatus, type Employee } from '../types'
 
 const lastSeen = (iso: string) => {
@@ -53,6 +54,14 @@ export function Team() {
       prompt('Copy this invite link', url.toString())
     }
   }
+  const copyInstallLink = async () => {
+    try {
+      await navigator.clipboard.writeText(installUrl())
+      flash('Install instructions link copied — text it to staff')
+    } catch {
+      prompt('Copy this link', installUrl())
+    }
+  }
   const invite = async (e: Employee) => {
     try {
       await inviteEmployee(e.id)
@@ -73,6 +82,9 @@ export function Team() {
               <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />
               Show inactive
             </label>
+            <button className="btn-secondary" onClick={copyInstallLink} title="Copy a link to the add-to-home-screen instructions">
+              <Smartphone size={16} /> <span className="hidden sm:inline">Install link</span>
+            </button>
             <button className="btn-primary" onClick={() => setEditing('new')}>
               <Plus size={16} /> Employee
             </button>

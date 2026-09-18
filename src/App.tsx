@@ -8,6 +8,7 @@ import { Team } from './pages/Team'
 import { NewOrganization } from './pages/NewOrganization'
 import { OrgSettings } from './pages/OrgSettings'
 import { Offers } from './pages/Offers'
+import { Install } from './pages/Install'
 import { Login } from './pages/auth/Login'
 import { Register } from './pages/auth/Register'
 import { ForgotPassword } from './pages/auth/ForgotPassword'
@@ -52,6 +53,7 @@ export default function App() {
       </Route>
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/install" element={<Install />} />
       <Route element={<RequireAuth />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/schedule" element={<Schedule />} />
