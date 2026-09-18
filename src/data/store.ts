@@ -1,4 +1,5 @@
 import type {
+  AccountStatus,
   Employee,
   EmployeeInput,
   NewOrganizationInput,
@@ -47,6 +48,8 @@ export interface DataStore {
   deleteEmployee(id: string): Promise<void>
   /** Send a login invite to the employee's email. */
   inviteEmployee(id: string): Promise<void>
+  /** Manager-only: confirmation / last-seen for each linked employee. */
+  accountStatus(orgId: string): Promise<AccountStatus[]>
 
   createOffer(input: OfferInput): Promise<ShiftOffer>
   /** Claim an open offer: reassigns the shift to the claimer and closes the offer. */

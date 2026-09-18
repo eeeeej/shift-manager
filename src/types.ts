@@ -72,6 +72,13 @@ export interface Employee {
   role: Role
 }
 
+/** Login state of an employee's linked account (managers only). */
+export interface AccountStatus {
+  employeeId: string
+  confirmedAt: string | null
+  lastSeenAt: string | null
+}
+
 export type ShiftStatus = 'scheduled' | 'open'
 
 /** A week (Sunday start, YYYY-MM-DD) whose shifts are visible to staff. */

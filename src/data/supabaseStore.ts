@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Employee, EmployeeInput, NewOrganizationInput, OfferStatus, OrgBrand, Organization, OrganizationInput, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
+import type { AccountStatus, Employee, EmployeeInput, NewOrganizationInput, OfferStatus, OrgBrand, Organization, OrganizationInput, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 
 interface OrgRow {
@@ -236,6 +236,15 @@ export class SupabaseStore implements DataStore {
   async deleteEmployee(id: string): Promise<void> {
     const { error } = await this.client.from('employees').delete().eq('id', id)
     if (error) throw new Error(error.message)
+  }
+
+  async accountStatus(orgId: string): Promise<AccountStatus[]> {
+    const res = await this.client.rpc('account_status', { p_org: orgId })
+    return unwrap<{ employee_id: string; confirmed_at: string | null; last_seen_at: string | null }[]>(res).map((r) => ({
+      employeeId: r.employee_id,
+      confirmedAt: r.confirmed_at,
+      lastSeenAt: r.last_seen_at,
+    }))
   }
 
   async inviteEmployee(id: string): Promise<void> {
