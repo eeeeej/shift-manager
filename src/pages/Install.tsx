@@ -66,7 +66,7 @@ export function Install() {
       </header>
 
       <main className="mx-auto max-w-md px-4 py-6">
-        <h1 className="text-2xl font-semibold">Add {org ? `the ${name} schedule` : name} to your home screen</h1>
+        <h1 className="text-2xl font-semibold">Add {org ? `${name} schedule` : name} to your home screen</h1>
         <p className="mt-1 text-sm text-slate-600">
           Takes about 30 seconds. Once added it opens like an app and can send you shift notifications.
         </p>
