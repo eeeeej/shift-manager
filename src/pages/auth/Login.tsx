@@ -59,6 +59,12 @@ export function Login() {
           Create account
         </Link>
       </div>
+      <p className="mt-4 text-center text-xs text-slate-500">
+        On your phone?{' '}
+        <Link to="/install" className="underline">
+          Add the app to your home screen
+        </Link>
+      </p>
 
       {isDemoMode && (
         <div className="mt-5 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
