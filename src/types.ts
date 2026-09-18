@@ -2,7 +2,10 @@
 export const DEFAULT_POSITIONS = ['Server', 'Bartender', 'Bar Back', 'Host', 'Busser', 'Kitchen', 'Manager']
 export type Position = string
 
-export type Role = 'admin' | 'employee'
+/** owner > admin (manager) > employee (staff). */
+export type Role = 'owner' | 'admin' | 'employee'
+export const ROLE_LABEL: Record<Role, string> = { owner: 'Owner', admin: 'Manager', employee: 'Staff' }
+export const isManagerRole = (r: Role | undefined) => r === 'admin' || r === 'owner'
 
 export interface Membership {
   orgId: string

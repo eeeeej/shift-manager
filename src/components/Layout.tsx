@@ -11,7 +11,7 @@ import { InstallBanner } from './InstallBanner'
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth()
-  const { isAdmin, me, offers, shifts, org, orgs, setOrg, canCreateOrg } = useData()
+  const { isAdmin, isOwner, me, offers, shifts, org, orgs, setOrg, canCreateOrg } = useData()
   const navigate = useNavigate()
   useEffect(() => applyBrand(org), [org])
   const openOffers = visibleOffersFor(offers, shifts, me, isAdmin).filter((o) => o.status === 'open').length
@@ -56,7 +56,7 @@ export function Layout({ children }: { children: ReactNode }) {
             ) : (
               <span className="font-semibold short:hidden">{orgLabel(org)}</span>
             )}
-            {isAdmin && org && (
+            {isOwner && org && (
               <NavLink to="/settings" className="btn-ghost p-1.5 short:hidden" title="Restaurant settings" aria-label="Restaurant settings">
                 <Settings size={16} />
               </NavLink>
@@ -91,7 +91,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2 text-sm">
             <span className="hidden text-slate-600 sm:inline short:hidden">
               {me?.name ?? user?.fullName ?? user?.email}
-              <span className="ml-1.5 chip bg-slate-100 text-slate-600">{isAdmin ? 'admin' : 'staff'}</span>
+              <span className="ml-1.5 chip bg-slate-100 text-slate-600">{isOwner ? 'owner' : isAdmin ? 'manager' : 'staff'}</span>
             </span>
             <button className="btn-ghost flex items-center gap-1 px-2 py-2 text-xs text-slate-600" onClick={signOut} title="Sign out">
               <Power size={15} /> <span className="hidden sm:inline short:hidden">Sign out</span>

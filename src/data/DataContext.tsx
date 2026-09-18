@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   DEFAULT_POSITIONS,
+  isManagerRole,
   type Employee,
   type EmployeeInput,
   type NewOrganizationInput,
@@ -38,7 +39,10 @@ export interface DataApi {
   error: string | null
   /** The employee record linked to the signed-in user, if any. */
   me: Employee | null
+  /** Manager or owner of the current restaurant (or platform admin). */
   isAdmin: boolean
+  /** Owner of the current restaurant (or platform admin): settings + role changes. */
+  isOwner: boolean
   reload(): Promise<void>
   employeeById(id: string | null): Employee | undefined
   shiftById(id: string): Shift | undefined
@@ -161,7 +165,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [employees, user])
 
   const membership = user && org ? user.memberships.find((m) => m.orgId === org.id) : undefined
-  const isAdmin = Boolean(user?.isSuperadmin) || membership?.role === 'admin' || me?.role === 'admin'
+  const isAdmin = Boolean(user?.isSuperadmin) || isManagerRole(membership?.role) || isManagerRole(me?.role)
+  const isOwner = Boolean(user?.isSuperadmin) || membership?.role === 'owner' || me?.role === 'owner'
   const positions = org?.positions ?? DEFAULT_POSITIONS
   const canCreateOrg = Boolean(user?.isSuperadmin) || selfServe
   const requireOrg = useCallback(() => {
@@ -197,6 +202,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       error,
       me,
       isAdmin,
+      isOwner,
       reload,
       employeeById: (id) => (id ? employees.find((e) => e.id === id) : undefined),
       shiftById: (id) => shifts.find((s) => s.id === id),
@@ -218,7 +224,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cancelOffer: (offerId, outcome) =>
         run(() => store.cancelOffer(offerId, me?.name ?? user?.fullName ?? user?.email, outcome)),
     }),
-    [orgs, org, setOrg, canCreateOrg, positions, employees, shifts, offers, loading, error, me, isAdmin, reload, run, user, requireOrg],
+    [orgs, org, setOrg, canCreateOrg, positions, employees, shifts, offers, loading, error, me, isAdmin, isOwner, reload, run, user, requireOrg],
   )
 
   return <DataContext.Provider value={api}>{children}</DataContext.Provider>
