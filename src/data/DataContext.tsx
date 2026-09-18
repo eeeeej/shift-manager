@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { Employee, EmployeeInput, Shift, ShiftInput, ShiftOffer } from '../types'
+import { DEFAULT_POSITIONS, type Employee, type EmployeeInput, type Organization, type Position, type Shift, type ShiftInput, type ShiftOffer } from '../types'
 import type { Snapshot } from './store'
 import { isDemoMode, supabase } from '../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
@@ -8,6 +8,13 @@ import { MockStore } from './mockStore'
 import { SupabaseStore } from './supabaseStore'
 
 export interface DataApi {
+  /** Organizations the signed-in user can access. */
+  orgs: Organization[]
+  /** The organization currently being viewed; null until orgs have loaded (or if the user has none). */
+  org: Organization | null
+  setOrg(orgId: string): void
+  /** Positions of the current organization. */
+  positions: Position[]
   employees: Employee[]
   shifts: Shift[]
   offers: ShiftOffer[]
@@ -41,18 +48,44 @@ const DataContext = createContext<DataApi | null>(null)
 
 const store: DataStore = isDemoMode ? new MockStore() : new SupabaseStore(supabase!)
 const EMPTY: Snapshot = { employees: [], shifts: [], offers: [] }
+const ORG_KEY = 'shift-manager:org'
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
+  const [orgs, setOrgs] = useState<Organization[]>([])
+  const [orgId, setOrgId] = useState<string | null>(() => localStorage.getItem(ORG_KEY))
   const [rawEmployees, setEmployees] = useState<Employee[]>([])
   const [rawShifts, setShifts] = useState<Shift[]>([])
   const [rawOffers, setOffers] = useState<ShiftOffer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const org = useMemo(() => orgs.find((o) => o.id === orgId) ?? null, [orgs, orgId])
+
+  const setOrg = useCallback((id: string) => {
+    localStorage.setItem(ORG_KEY, id)
+    setOrgId(id)
+    setLoading(true)
+  }, [])
+
   const reload = useCallback(async () => {
     try {
-      const snap: Snapshot = await store.load()
+      const list = await store.loadOrganizations()
+      setOrgs(list)
+      // Fall back to the first org when none is chosen or the saved one is gone.
+      const current = list.find((o) => o.id === orgId) ?? list[0] ?? null
+      if (current && current.id !== orgId) {
+        localStorage.setItem(ORG_KEY, current.id)
+        setOrgId(current.id)
+      }
+      if (!current) {
+        setEmployees([])
+        setShifts([])
+        setOffers([])
+        setError(null)
+        return
+      }
+      const snap: Snapshot = await store.load(current.id)
       setEmployees(snap.employees)
       setShifts(snap.shifts)
       setOffers(snap.offers)
@@ -62,7 +95,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [orgId])
 
   useEffect(() => {
     if (user) reload()
@@ -109,7 +142,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     )
   }, [employees, user])
 
-  const isAdmin = me ? me.role === 'admin' : user?.role === 'admin'
+  const membership = user && org ? user.memberships.find((m) => m.orgId === org.id) : undefined
+  const isAdmin = Boolean(user?.isSuperadmin) || membership?.role === 'admin' || me?.role === 'admin'
+  const positions = org?.positions ?? DEFAULT_POSITIONS
+  const requireOrg = useCallback(() => {
+    if (!org) throw new Error('No organization selected')
+    return org.id
+  }, [org])
 
   const run = useCallback(
     async (fn: () => Promise<unknown>) => {
@@ -121,6 +160,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const api: DataApi = useMemo(
     () => ({
+      orgs,
+      org,
+      setOrg,
+      positions,
       employees,
       shifts,
       offers,
@@ -131,16 +174,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       reload,
       employeeById: (id) => (id ? employees.find((e) => e.id === id) : undefined),
       shiftById: (id) => shifts.find((s) => s.id === id),
-      createShift: (input) => run(() => store.createShift(input)),
+      createShift: (input) => run(() => store.createShift(requireOrg(), input)),
       updateShift: (id, patch) => run(() => store.updateShift(id, patch)),
       deleteShift: (id) => run(() => store.deleteShift(id)),
       createShifts: async (inputs) => {
-        const created = await store.createShifts(inputs)
+        const created = await store.createShifts(requireOrg(), inputs)
         await reload()
         return created
       },
       deleteShifts: (ids) => run(() => store.deleteShifts(ids)),
-      createEmployee: (input) => run(() => store.createEmployee(input)),
+      createEmployee: (input) => run(() => store.createEmployee(requireOrg(), input)),
       updateEmployee: (id, patch) => run(() => store.updateEmployee(id, patch)),
       deleteEmployee: (id) => run(() => store.deleteEmployee(id)),
       inviteEmployee: (id) => store.inviteEmployee(id),
@@ -149,7 +192,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cancelOffer: (offerId, outcome) =>
         run(() => store.cancelOffer(offerId, me?.name ?? user?.fullName ?? user?.email, outcome)),
     }),
-    [employees, shifts, offers, loading, error, me, isAdmin, reload, run, user],
+    [orgs, org, setOrg, positions, employees, shifts, offers, loading, error, me, isAdmin, reload, run, user, requireOrg],
   )
 
   return <DataContext.Provider value={api}>{children}</DataContext.Provider>

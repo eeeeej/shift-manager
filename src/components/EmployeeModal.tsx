@@ -1,12 +1,12 @@
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useData } from '../data/DataContext'
-import { POSITIONS, type Employee, type EmployeeInput, type Position } from '../types'
+import type { Employee, EmployeeInput, Position } from '../types'
 import { nextColor, PALETTE } from '../utils/colors'
 import { ErrorText, Modal } from './ui'
 
 export function EmployeeModal({ employee, onClose }: { employee: Employee | null; onClose: () => void }) {
-  const { employees, me, createEmployee, updateEmployee, deleteEmployee } = useData()
+  const { employees, me, positions: orgPositions, createEmployee, updateEmployee, deleteEmployee } = useData()
   const [name, setName] = useState(employee?.name ?? '')
   const [positions, setPositions] = useState<Position[]>(employee?.positions ?? ['Server'])
   const [email, setEmail] = useState(employee?.email ?? '')
@@ -85,7 +85,7 @@ export function EmployeeModal({ employee, onClose }: { employee: Employee | null
         <div>
           <label className="label">Positions</label>
           <div className="flex flex-wrap gap-2">
-            {POSITIONS.map((p) => {
+            {orgPositions.map((p) => {
               const on = positions.includes(p)
               return (
                 <button

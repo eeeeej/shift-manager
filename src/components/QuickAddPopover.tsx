@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useData } from '../data/DataContext'
-import { POSITIONS, type Employee, type Position, type ShiftInput } from '../types'
+import type { Employee, Position, ShiftInput } from '../types'
 import { conflictMessage, confirmOverlap, findConflicts } from '../utils/conflicts'
 import { CLOSE_MIN, formatDateShort, formatShorthand, parseShorthand } from '../utils/time'
 import { WarnText } from './ui'
@@ -29,7 +29,7 @@ export function QuickAddPopover({
   onMore: (draft: Partial<ShiftInput>) => void
   onClose: () => void
 }) {
-  const { shifts } = useData()
+  const { shifts, positions } = useData()
   const [employeeId, setEmployeeId] = useState('')
   const [position, setPosition] = useState<Position>(defaultPosition)
   const [time, setTime] = useState('')
@@ -105,7 +105,7 @@ export function QuickAddPopover({
         value={position}
         onChange={(e) => setPosition(e.target.value as Position)}
       >
-        {POSITIONS.map((p) => (
+        {positions.map((p) => (
           <option key={p}>{p}</option>
         ))}
       </select>

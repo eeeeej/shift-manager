@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { Profile } from '../types'
+import type { Membership, Profile, Role } from '../types'
 import { isDemoMode, supabase } from '../lib/supabase'
 import { SEED_EMPLOYEES } from '../data/seed'
 import { isInvitedDemoEmail } from '../data/mockStore'
@@ -17,7 +17,7 @@ export interface AuthApi {
   updatePassword(password: string): Promise<void>
   signOut(): Promise<void>
   /** Demo-only: accounts you can log in with. */
-  demoAccounts: { email: string; label: string; role: Profile['role'] }[]
+  demoAccounts: { email: string; label: string; role: Role }[]
 }
 
 const AuthContext = createContext<AuthApi | null>(null)
@@ -35,7 +35,7 @@ interface DemoAccount {
   email: string
   password: string
   fullName: string
-  role: Profile['role']
+  role: Role
 }
 
 function seedDemoAccounts(): DemoAccount[] {
@@ -70,31 +70,36 @@ function writeDemoAccounts(accounts: DemoAccount[]) {
 }
 
 /** Demo-only: mirror an employee's role onto their login (and live session). */
-export function setDemoAccountRole(email: string, role: Profile['role']) {
+export function setDemoAccountRole(email: string, role: Role) {
   const accounts = readDemoAccounts().map((a) => (a.email.toLowerCase() === email.toLowerCase() ? { ...a, role } : a))
   writeDemoAccounts(accounts)
-  const raw = localStorage.getItem(DEMO_SESSION_KEY)
-  if (raw) {
-    const session = JSON.parse(raw) as Profile
-    if (session.email.toLowerCase() === email.toLowerCase()) {
-      localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ ...session, role }))
-    }
-  }
 }
 
-const toProfile = (a: DemoAccount): Profile => ({ id: a.id, email: a.email, role: a.role, fullName: a.fullName })
+// Demo mode has one organization (see mockStore DEMO_ORG); the id is repeated
+// here to avoid a circular import.
+const DEMO_ORG_ID = 'org-demo'
+const toProfile = (a: DemoAccount): Profile => ({
+  id: a.id,
+  email: a.email,
+  fullName: a.fullName,
+  isSuperadmin: a.id === 'user-owner',
+  memberships: [{ orgId: DEMO_ORG_ID, role: a.role }],
+})
 
 function useDemoAuth(): AuthApi {
   const [user, setUser] = useState<Profile | null>(() => {
     const raw = localStorage.getItem(DEMO_SESSION_KEY)
-    return raw ? (JSON.parse(raw) as Profile) : null
+    if (!raw) return null
+    const saved = JSON.parse(raw) as Partial<DemoAccount>
+    const acct = readDemoAccounts().find((a) => a.id === saved.id)
+    return acct ? toProfile(acct) : null
   })
   const [pending, setPending] = useState<DemoAccount | null>(null)
 
-  const setSession = (p: Profile | null) => {
-    if (p) localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(p))
+  const setSession = (a: DemoAccount | null) => {
+    if (a) localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ id: a.id, email: a.email }))
     else localStorage.removeItem(DEMO_SESSION_KEY)
-    setUser(p)
+    setUser(a ? toProfile(a) : null)
   }
 
   const demoAccounts = useMemo(
@@ -109,7 +114,7 @@ function useDemoAuth(): AuthApi {
     async signIn(email, password) {
       const acct = readDemoAccounts().find((a) => a.email.toLowerCase() === email.toLowerCase())
       if (!acct || acct.password !== password) throw new Error('Invalid email or password')
-      setSession(toProfile(acct))
+      setSession(acct)
     },
     async signUp(email, password, fullName) {
       if (readDemoAccounts().some((a) => a.email.toLowerCase() === email.toLowerCase()))
@@ -125,7 +130,7 @@ function useDemoAuth(): AuthApi {
       const accounts = readDemoAccounts()
       if (!accounts.some((a) => a.id === acct.id)) writeDemoAccounts([...accounts, acct])
       setPending(null)
-      setSession(toProfile(acct))
+      setSession(acct)
     },
     async signInWithGoogle() {
       throw new Error('Google sign-in requires a Supabase project (demo mode)')
@@ -138,12 +143,12 @@ function useDemoAuth(): AuthApi {
       setPending(readDemoAccounts().find((a) => a.email === email.toLowerCase()) ?? null)
     },
     async updatePassword(password) {
-      const target = user ?? (pending ? toProfile(pending) : null)
-      if (!target) throw new Error('Not signed in')
-      const accounts = readDemoAccounts().map((a) => (a.id === target.id ? { ...a, password } : a))
+      const targetId = user?.id ?? pending?.id
+      if (!targetId) throw new Error('Not signed in')
+      const accounts = readDemoAccounts().map((a) => (a.id === targetId ? { ...a, password } : a))
       writeDemoAccounts(accounts)
       setPending(null)
-      setSession(target)
+      setSession(accounts.find((a) => a.id === targetId) ?? null)
     },
     async signOut() {
       setSession(null)
@@ -166,8 +171,19 @@ function useSupabaseAuth(): AuthApi {
         setLoading(false)
         return
       }
-      const { data } = await client.from('profiles').select('id, email, role, full_name').eq('id', userId).single()
-      setUser(data ? { id: data.id, email: data.email, role: data.role, fullName: data.full_name } : null)
+      const [{ data }, { data: mems }] = await Promise.all([
+        client.from('profiles').select('id, email, full_name, is_superadmin').eq('id', userId).single(),
+        client.from('memberships').select('org_id, role').eq('user_id', userId),
+      ])
+      const memberships: Membership[] = ((mems ?? []) as { org_id: string; role: Role }[]).map((m) => ({
+        orgId: m.org_id,
+        role: m.role,
+      }))
+      setUser(
+        data
+          ? { id: data.id, email: data.email, fullName: data.full_name, isSuperadmin: data.is_superadmin, memberships }
+          : null,
+      )
       setLoading(false)
     },
     [client],

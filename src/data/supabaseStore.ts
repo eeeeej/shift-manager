@@ -1,9 +1,20 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Employee, EmployeeInput, OfferStatus, Position, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
+import type { Employee, EmployeeInput, OfferStatus, OrgBrand, Organization, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
+
+interface OrgRow {
+  id: string
+  name: string
+  slug: string
+  timezone: string
+  positions: string[]
+  brand: OrgBrand | null
+  plan: string
+}
 
 interface EmployeeRow {
   id: string
+  org_id: string
   name: string
   positions: string[]
   email: string | null
@@ -16,6 +27,7 @@ interface EmployeeRow {
 
 interface ShiftRow {
   id: string
+  org_id: string
   employee_id: string | null
   position: string
   shift_date: string
@@ -39,10 +51,20 @@ interface OfferRow {
   resolved_by_name: string | null
 }
 
+const toOrg = (r: OrgRow): Organization => ({
+  id: r.id,
+  name: r.name,
+  slug: r.slug,
+  timezone: r.timezone,
+  positions: r.positions,
+  brand: r.brand ?? {},
+  plan: r.plan,
+})
+
 const toEmployee = (r: EmployeeRow): Employee => ({
   id: r.id,
   name: r.name,
-  positions: r.positions as Position[],
+  positions: r.positions,
   email: r.email,
   phone: r.phone,
   userId: r.user_id,
@@ -54,7 +76,7 @@ const toEmployee = (r: EmployeeRow): Employee => ({
 const toShift = (r: ShiftRow): Shift => ({
   id: r.id,
   employeeId: r.employee_id,
-  position: r.position as Position,
+  position: r.position,
   date: r.shift_date,
   startMin: r.start_min,
   endMin: r.end_min,
@@ -114,11 +136,16 @@ export class SupabaseStore implements DataStore {
     this.client = client
   }
 
-  async load(): Promise<Snapshot> {
+  async loadOrganizations(): Promise<Organization[]> {
+    const res = await this.client.from('organizations').select('*').order('name')
+    return unwrap<OrgRow[]>(res).map(toOrg)
+  }
+
+  async load(orgId: string): Promise<Snapshot> {
     const [emps, shifts, offers] = await Promise.all([
-      this.client.from('employees').select('*').order('name'),
-      this.client.from('shifts').select('*').order('shift_date').order('start_min'),
-      this.client.from('shift_offers').select('*').order('created_at', { ascending: false }),
+      this.client.from('employees').select('*').eq('org_id', orgId).order('name'),
+      this.client.from('shifts').select('*').eq('org_id', orgId).order('shift_date').order('start_min'),
+      this.client.from('shift_offers').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
     ])
     return {
       employees: unwrap<EmployeeRow[]>(emps).map(toEmployee),
@@ -127,8 +154,8 @@ export class SupabaseStore implements DataStore {
     }
   }
 
-  async createShift(input: ShiftInput): Promise<Shift> {
-    const res = await this.client.from('shifts').insert(shiftPatch(input)).select('*').single()
+  async createShift(orgId: string, input: ShiftInput): Promise<Shift> {
+    const res = await this.client.from('shifts').insert({ ...shiftPatch(input), org_id: orgId }).select('*').single()
     return toShift(unwrap<ShiftRow>(res))
   }
 
@@ -142,9 +169,9 @@ export class SupabaseStore implements DataStore {
     if (error) throw new Error(error.message)
   }
 
-  async createShifts(inputs: ShiftInput[]): Promise<Shift[]> {
+  async createShifts(orgId: string, inputs: ShiftInput[]): Promise<Shift[]> {
     if (inputs.length === 0) return []
-    const res = await this.client.from('shifts').insert(inputs.map(shiftPatch)).select('*')
+    const res = await this.client.from('shifts').insert(inputs.map((i) => ({ ...shiftPatch(i), org_id: orgId }))).select('*')
     return unwrap<ShiftRow[]>(res).map(toShift)
   }
 
@@ -154,8 +181,8 @@ export class SupabaseStore implements DataStore {
     if (error) throw new Error(error.message)
   }
 
-  async createEmployee(input: EmployeeInput): Promise<Employee> {
-    const res = await this.client.from('employees').insert(employeePatch(input)).select('*').single()
+  async createEmployee(orgId: string, input: EmployeeInput): Promise<Employee> {
+    const res = await this.client.from('employees').insert({ ...employeePatch(input), org_id: orgId }).select('*').single()
     return toEmployee(unwrap<EmployeeRow>(res))
   }
 

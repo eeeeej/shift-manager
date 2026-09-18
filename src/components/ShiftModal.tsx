@@ -1,7 +1,7 @@
 import { Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useData } from '../data/DataContext'
-import { POSITIONS, type Position, type ShiftInput } from '../types'
+import type { Position, ShiftInput } from '../types'
 import { conflictMessage, confirmOverlap, findConflicts } from '../utils/conflicts'
 import { CLOSE_MIN, minToTimeInput, parseShorthand, timeInputToMin } from '../utils/time'
 import { ErrorText, Modal, WarnText } from './ui'
@@ -9,7 +9,7 @@ import { ErrorText, Modal, WarnText } from './ui'
 export type ShiftDraft = Partial<ShiftInput> & { id?: string }
 
 export function ShiftModal({ draft, onClose }: { draft: ShiftDraft; onClose: () => void }) {
-  const { employees, shifts, createShift, updateShift, deleteShift } = useData()
+  const { employees, shifts, positions, createShift, updateShift, deleteShift } = useData()
   const [employeeId, setEmployeeId] = useState<string>(draft.employeeId ?? '')
   const [position, setPosition] = useState<Position>(draft.position ?? 'Server')
   const [date, setDate] = useState(draft.date ?? '')
@@ -106,7 +106,7 @@ export function ShiftModal({ draft, onClose }: { draft: ShiftDraft; onClose: () 
         <div>
           <label className="label">Position</label>
           <select className="input" value={position} onChange={(e) => setPosition(e.target.value as Position)}>
-            {POSITIONS.map((p) => (
+            {positions.map((p) => (
               <option key={p}>{p}</option>
             ))}
           </select>
