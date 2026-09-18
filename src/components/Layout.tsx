@@ -1,4 +1,4 @@
-import { ArrowLeftRight, CalendarDays, LayoutDashboard, Power, Settings, Users } from 'lucide-react'
+import { CalendarDays, Inbox, LayoutDashboard, Power, Settings, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -11,14 +11,15 @@ import { InstallBanner } from './InstallBanner'
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth()
-  const { isAdmin, isOwner, me, offers, shifts, org, orgs, setOrg, canCreateOrg } = useData()
+  const { isAdmin, isOwner, me, offers, shifts, timeOff, org, orgs, setOrg, canCreateOrg } = useData()
   const navigate = useNavigate()
   const openOffers = visibleOffersFor(offers, shifts, me, isAdmin).filter((o) => o.status === 'open').length
+  const pendingTimeOff = timeOff.filter((r) => r.status === 'pending' && (isAdmin || r.employeeId === me?.id)).length
 
   const nav = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/schedule', label: 'Schedule', icon: CalendarDays },
-    { to: '/offers', label: 'Offers', icon: ArrowLeftRight, badge: openOffers },
+    { to: '/requests', label: 'Requests', icon: Inbox, badge: openOffers + pendingTimeOff },
     ...(isAdmin ? [{ to: '/team', label: 'Team', icon: Users }] : []),
   ]
   const NEW_ORG = '__new__'

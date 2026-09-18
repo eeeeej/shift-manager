@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AccountStatus, BrandImageKind, Employee, EmployeeInput, NewOrganizationInput, OfferStatus, OrgBrand, Organization, OrganizationInput, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
+import type { AccountStatus, BrandImageKind, Employee, EmployeeInput, NewOrganizationInput, OfferStatus, OrgBrand, Organization, OrganizationInput, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus, TimeOffInput, TimeOffRequest, TimeOffStatus } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 
 interface OrgRow {
@@ -23,6 +23,22 @@ interface EmployeeRow {
   color: string
   active: boolean
   role: Role
+  unavailability: { dow: number; start_min: number; end_min: number }[]
+}
+
+interface TimeOffRow {
+  id: string
+  org_id: string
+  employee_id: string
+  start_date: string
+  end_date: string
+  start_min: number | null
+  end_min: number | null
+  note: string | null
+  status: TimeOffStatus
+  decision_note: string | null
+  decided_at: string | null
+  created_at: string
 }
 
 interface ShiftRow {
@@ -77,6 +93,21 @@ const toEmployee = (r: EmployeeRow): Employee => ({
   color: r.color,
   active: r.active,
   role: r.role,
+  unavailability: (r.unavailability ?? []).map((u) => ({ dow: u.dow, startMin: u.start_min, endMin: u.end_min })),
+})
+
+const toTimeOff = (r: TimeOffRow): TimeOffRequest => ({
+  id: r.id,
+  employeeId: r.employee_id,
+  startDate: r.start_date,
+  endDate: r.end_date,
+  startMin: r.start_min,
+  endMin: r.end_min,
+  note: r.note,
+  status: r.status,
+  decisionNote: r.decision_note,
+  decidedAt: r.decided_at,
+  createdAt: r.created_at,
 })
 
 const toShift = (r: ShiftRow): Shift => ({
@@ -126,6 +157,7 @@ function employeePatch(p: Partial<EmployeeInput>): Partial<EmployeeRow> {
   if (p.color !== undefined) row.color = p.color
   if (p.active !== undefined) row.active = p.active
   if (p.role !== undefined) row.role = p.role
+  if (p.unavailability !== undefined) row.unavailability = p.unavailability.map((u) => ({ dow: u.dow, start_min: u.startMin, end_min: u.endMin }))
   return row
 }
 
@@ -179,11 +211,12 @@ export class SupabaseStore implements DataStore {
   }
 
   async load(orgId: string): Promise<Snapshot> {
-    const [emps, shifts, offers, weeks] = await Promise.all([
+    const [emps, shifts, offers, weeks, timeOff] = await Promise.all([
       this.client.from('employees').select('*').eq('org_id', orgId).order('name'),
       this.client.from('shifts').select('*').eq('org_id', orgId).order('shift_date').order('start_min'),
       this.client.from('shift_offers').select('*').eq('org_id', orgId).order('created_at', { ascending: false }),
       this.client.from('published_weeks').select('week_start,published_at,published_by:profiles(full_name,email)').eq('org_id', orgId),
+      this.client.from('time_off_requests').select('*').eq('org_id', orgId).order('start_date'),
     ])
     return {
       employees: unwrap<EmployeeRow[]>(emps).map(toEmployee),
@@ -195,6 +228,7 @@ export class SupabaseStore implements DataStore {
         publishedAt: w.published_at,
         publishedBy: w.published_by ? w.published_by.full_name || w.published_by.email : null,
       })),
+      timeOff: unwrap<TimeOffRow[]>(timeOff).map(toTimeOff),
     }
   }
 
@@ -288,5 +322,27 @@ export class SupabaseStore implements DataStore {
     const { error } = await this.client.from('shift_offers').update({ status: outcome })
       .eq('id', offerId)
     if (error) throw new Error(error.message)
+  }
+
+  async createTimeOff(orgId: string, input: TimeOffInput): Promise<TimeOffRequest> {
+    const res = await this.client
+      .from('time_off_requests')
+      .insert({
+        org_id: orgId,
+        employee_id: input.employeeId,
+        start_date: input.startDate,
+        end_date: input.endDate,
+        start_min: input.startMin,
+        end_min: input.endMin,
+        note: input.note,
+      })
+      .select('*')
+      .single()
+    return toTimeOff(unwrap<TimeOffRow>(res))
+  }
+
+  async setTimeOffStatus(id: string, status: Exclude<TimeOffStatus, 'pending'>, decisionNote: string | null = null): Promise<TimeOffRequest> {
+    const res = await this.client.from('time_off_requests').update({ status, decision_note: decisionNote }).eq('id', id).select('*').single()
+    return toTimeOff(unwrap<TimeOffRow>(res))
   }
 }

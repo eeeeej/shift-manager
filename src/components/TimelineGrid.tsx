@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { Employee, Shift } from '../types'
 import { layoutLanes } from '../utils/lanes'
 import { DAY_END_MIN, DAY_START_MIN, formatTime, fromDateKey, nowMin, todayKey, WEEKDAYS } from '../utils/time'
+import { OffChips } from './OffChips'
 import { TimelineShift } from './ShiftCard'
 
 const HOUR_PX = 56
@@ -70,6 +71,7 @@ export function TimelineGrid({
                 <div className={`mx-auto mt-0.5 grid h-7 w-7 place-items-center rounded-full text-sm font-semibold ${isToday ? 'bg-slate-900 text-white' : ''}`}>
                   {date.getDate()}
                 </div>
+                <OffChips date={d} employees={employees} hideNames={hideNames} className="mt-1 justify-center" />
               </div>
             )
           })}

@@ -3,6 +3,7 @@ import { useData } from '../data/DataContext'
 import type { Employee, Position, ShiftInput } from '../types'
 import { conflictMessage, confirmOverlap, findConflicts } from '../utils/conflicts'
 import { CLOSE_MIN, formatDateShort, formatShorthand, parseShorthand } from '../utils/time'
+import { FULL_DAY, availabilityWarning } from '../utils/timeOff'
 import { WarnText } from './ui'
 
 /** Common spreadsheet shifts, as [startMin, endMin]. */
@@ -29,7 +30,7 @@ export function QuickAddPopover({
   onMore: (draft: Partial<ShiftInput>) => void
   onClose: () => void
 }) {
-  const { shifts, positions } = useData()
+  const { shifts, timeOff, positions } = useData()
   const [employeeId, setEmployeeId] = useState('')
   const [position, setPosition] = useState<Position>(defaultPosition)
   const [time, setTime] = useState('')
@@ -57,6 +58,7 @@ export function QuickAddPopover({
     .sort((a, b) => a.name.localeCompare(b.name))
   const parsed = parseShorthand(time)
   const dayConflicts = findConflicts(shifts, employeeId, { date, startMin: 0, endMin: 0 })
+  const offWarning = availabilityWarning(emp, timeOff, { date, ...(parsed ?? FULL_DAY) })
 
   const draft = (): Partial<ShiftInput> => ({
     date,
@@ -123,6 +125,7 @@ export function QuickAddPopover({
         ))}
       </select>
       <WarnText className="mb-1.5 !px-2 !py-1 !text-xs">{conflictMessage(dayConflicts, emp?.name)}</WarnText>
+      {offWarning && <WarnText className="mb-1.5 !px-2 !py-1 !text-xs">{offWarning}</WarnText>}
       <div className="mb-1.5 flex flex-wrap gap-1">
         {PRESETS.map(([s, e]) => (
           <button

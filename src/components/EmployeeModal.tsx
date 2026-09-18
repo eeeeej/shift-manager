@@ -1,8 +1,10 @@
-import { Trash2 } from 'lucide-react'
+import { Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { useData } from '../data/DataContext'
-import { ROLE_LABEL, type Employee, type EmployeeInput, type Position, type Role } from '../types'
+import { ROLE_LABEL, type Employee, type EmployeeInput, type Position, type Role, type Unavailability } from '../types'
 import { nextColor, PALETTE } from '../utils/colors'
+import { WEEKDAYS_LONG, minToTimeInput, timeInputToMin } from '../utils/time'
+import { FULL_DAY, describeUnavailability, isFullDay } from '../utils/timeOff'
 import { ErrorText, Modal } from './ui'
 
 export function EmployeeModal({ employee, onClose }: { employee: Employee | null; onClose: () => void }) {
@@ -16,6 +18,9 @@ export function EmployeeModal({ employee, onClose }: { employee: Employee | null
   const [color, setColor] = useState(employee?.color ?? nextColor(employees.map((e) => e.color)))
   const [active, setActive] = useState(employee?.active ?? true)
   const [role, setRole] = useState<Role>(employee?.role ?? 'employee')
+  const [unavailability, setUnavailability] = useState<Unavailability[]>(employee?.unavailability ?? [])
+  const [addingDow, setAddingDow] = useState(2)
+  const [addingWindow, setAddingWindow] = useState<{ startMin: number; endMin: number } | null>(null)
   const isSelf = !!employee && employee.id === me?.id
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -35,6 +40,7 @@ export function EmployeeModal({ employee, onClose }: { employee: Employee | null
       color,
       active,
       role,
+      unavailability,
     }
     setBusy(true)
     try {
@@ -45,6 +51,15 @@ export function EmployeeModal({ employee, onClose }: { employee: Employee | null
       setError(e instanceof Error ? e.message : String(e))
       setBusy(false)
     }
+  }
+
+  const addUnavailability = () => {
+    const w = addingWindow ?? FULL_DAY
+    if (w.endMin <= w.startMin) return setError('End time must be after start time.')
+    setError(null)
+    setUnavailability((prev) =>
+      [...prev.filter((u) => !(u.dow === addingDow && isFullDay(w))), { dow: addingDow, ...w }].sort((a, b) => a.dow - b.dow || a.startMin - b.startMin),
+    )
   }
 
   const remove = async () => {
@@ -143,6 +158,66 @@ export function EmployeeModal({ employee, onClose }: { employee: Employee | null
                 ? 'Only an owner can change access.'
                 : 'Managers edit the schedule, team and offers; owners also manage settings and access.'}
           </p>
+        </div>
+        <div>
+          <label className="label">Can't work</label>
+          {unavailability.length > 0 && (
+            <ul className="mb-2 flex flex-wrap gap-1.5">
+              {unavailability.map((u, i) => (
+                <li key={i} className="chip inline-flex items-center gap-1 bg-slate-100 text-slate-700">
+                  {describeUnavailability(u)}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${describeUnavailability(u)}`}
+                    className="-mr-1 rounded p-0.5 hover:bg-slate-200"
+                    onClick={() => setUnavailability((prev) => prev.filter((_, j) => j !== i))}
+                  >
+                    <X size={12} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <select className="input w-auto" value={addingDow} onChange={(e) => setAddingDow(Number(e.target.value))} aria-label="Weekday">
+              {WEEKDAYS_LONG.map((d, i) => (
+                <option key={d} value={i}>
+                  {d}s
+                </option>
+              ))}
+            </select>
+            <select
+              className="input w-auto"
+              value={addingWindow ? 'part' : 'all'}
+              onChange={(e) => setAddingWindow(e.target.value === 'all' ? null : { startMin: 10 * 60, endMin: 16 * 60 })}
+              aria-label="All day or part"
+            >
+              <option value="all">all day</option>
+              <option value="part">between…</option>
+            </select>
+            {addingWindow && (
+              <>
+                <input
+                  type="time"
+                  className="input w-auto"
+                  value={minToTimeInput(addingWindow.startMin)}
+                  onChange={(e) => setAddingWindow({ ...addingWindow, startMin: timeInputToMin(e.target.value) })}
+                  aria-label="From"
+                />
+                <input
+                  type="time"
+                  className="input w-auto"
+                  value={minToTimeInput(addingWindow.endMin)}
+                  onChange={(e) => setAddingWindow({ ...addingWindow, endMin: timeInputToMin(e.target.value) })}
+                  aria-label="To"
+                />
+              </>
+            )}
+            <button type="button" className="btn-secondary" onClick={addUnavailability}>
+              <Plus size={14} /> Add
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">Recurring every week; shows as “unavailable” on the schedule and warns when scheduling over it.</p>
         </div>
         {employee && (
           <label className="flex items-center gap-2 text-sm">

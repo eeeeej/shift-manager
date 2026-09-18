@@ -3,6 +3,7 @@ import { ArrowLeftRight } from "lucide-react";
 import type { Employee, Position, Shift, ShiftInput } from "../types";
 import { shiftColor } from "../utils/colors";
 import { formatShorthand } from "../utils/time";
+import { OffChips } from "./OffChips";
 import { QuickAddPopover } from "./QuickAddPopover";
 
 /** Short tag shown on chips for non-server roles ("BB" as on the spreadsheet). */
@@ -343,6 +344,9 @@ export function DayCell({
         )}
         {eveningPart.map(chip)}
       </div>
+      {!muted && (
+        <OffChips date={date} employees={employees} hideNames={hideNames} className="mt-1" />
+      )}
     </div>
   );
 }

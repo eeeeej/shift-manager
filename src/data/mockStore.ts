@@ -1,4 +1,4 @@
-import { DEFAULT_POSITIONS, type AccountStatus, type BrandImageKind, type Employee, type EmployeeInput, type NewOrganizationInput, type Organization, type OrganizationInput, type Shift, type ShiftInput, type ShiftOffer } from '../types'
+import { DEFAULT_POSITIONS, type AccountStatus, type BrandImageKind, type Employee, type EmployeeInput, type NewOrganizationInput, type Organization, type OrganizationInput, type Shift, type ShiftInput, type ShiftOffer, type TimeOffInput, type TimeOffRequest, type TimeOffStatus } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 import { addDays, startOfWeek, todayKey } from '../utils/time'
 import { SEED_EMPLOYEES, SEED_OFFERS, SEED_SHIFTS } from './seed'
@@ -27,14 +27,15 @@ function readSnapshot(): Snapshot {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const snap = JSON.parse(raw) as Snapshot
-      snap.employees = snap.employees.map((e) => ({ ...e, role: e.role ?? 'employee' }))
+      snap.employees = snap.employees.map((e) => ({ ...e, role: e.role ?? 'employee', unavailability: e.unavailability ?? [] }))
       snap.publishedWeeks ??= seedPublishedWeeks(snap.shifts)
+      snap.timeOff ??= []
       return snap
     }
   } catch {
     /* fall through to seed */
   }
-  return { employees: SEED_EMPLOYEES, shifts: SEED_SHIFTS, offers: SEED_OFFERS, publishedWeeks: seedPublishedWeeks(SEED_SHIFTS) }
+  return { employees: SEED_EMPLOYEES, shifts: SEED_SHIFTS, offers: SEED_OFFERS, publishedWeeks: seedPublishedWeeks(SEED_SHIFTS), timeOff: [] }
 }
 
 /** Mirrors the migration backfill: every week that already has shifts is published. */
@@ -224,5 +225,29 @@ export class MockStore implements DataStore {
     offer.resolvedAt = new Date().toISOString()
     offer.resolvedByName = byName ?? null
     this.persist()
+  }
+
+  async createTimeOff(_orgId: string, input: TimeOffInput): Promise<TimeOffRequest> {
+    const req: TimeOffRequest = {
+      ...input,
+      id: uid('to'),
+      status: 'pending',
+      decisionNote: null,
+      decidedAt: null,
+      createdAt: new Date().toISOString(),
+    }
+    this.snap.timeOff.push(req)
+    this.persist()
+    return req
+  }
+
+  async setTimeOffStatus(id: string, status: Exclude<TimeOffStatus, 'pending'>, decisionNote: string | null = null): Promise<TimeOffRequest> {
+    const req = this.snap.timeOff.find((r) => r.id === id)
+    if (!req) throw new Error('Request not found')
+    req.status = status
+    req.decisionNote = decisionNote
+    if (status !== 'cancelled') req.decidedAt = new Date().toISOString()
+    this.persist()
+    return req
   }
 }
