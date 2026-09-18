@@ -1,10 +1,10 @@
 import { ArrowLeftRight, CalendarDays, LayoutDashboard, Power, Settings, Users } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useData } from '../data/DataContext'
 import { visibleOffersFor } from '../data/offers'
-import { applyBrand, orgLabel } from '../lib/brand'
+import { orgLabel } from '../lib/brand'
 import { isDemoMode } from '../lib/supabase'
 import { resetDemoData } from '../data/mockStore'
 import { InstallBanner } from './InstallBanner'
@@ -13,7 +13,6 @@ export function Layout({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth()
   const { isAdmin, isOwner, me, offers, shifts, org, orgs, setOrg, canCreateOrg } = useData()
   const navigate = useNavigate()
-  useEffect(() => applyBrand(org), [org])
   const openOffers = visibleOffersFor(offers, shifts, me, isAdmin).filter((o) => o.status === 'open').length
 
   const nav = [

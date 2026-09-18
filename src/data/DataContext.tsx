@@ -18,6 +18,7 @@ import {
 import type { Snapshot } from './store'
 import { isDemoMode, supabase } from '../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
+import { applyBrand } from '../lib/brand'
 import type { DataStore, OfferInput } from './store'
 import { MockStore } from './mockStore'
 import { SupabaseStore } from './supabaseStore'
@@ -96,6 +97,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [selfServe, setSelfServe] = useState(false)
 
   const org = useMemo(() => orgs.find((o) => o.id === orgId) ?? null, [orgs, orgId])
+  // Applied here (not in Layout) so public pages like /install also install the org's icon/name.
+  useEffect(() => applyBrand(org), [org])
 
   const setOrg = useCallback((id: string) => {
     localStorage.setItem(ORG_KEY, id)
