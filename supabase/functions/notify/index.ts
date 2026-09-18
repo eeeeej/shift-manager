@@ -38,11 +38,25 @@ interface PublishRow {
   published_by: string | null
 }
 
+interface TimeOffRow {
+  id: string
+  org_id: string
+  employee_id: string
+  start_date: string
+  end_date: string
+  start_min: number | null
+  end_min: number | null
+  note: string | null
+  status: 'pending' | 'approved' | 'denied' | 'cancelled'
+  decision_note: string | null
+  decided_by: string | null
+}
+
 interface Payload {
   type: Op | 'PUBLISH'
-  table: 'shifts' | 'shift_offers' | 'published_weeks'
-  record: ShiftRow | OfferRow | PublishRow | null
-  old_record: ShiftRow | OfferRow | null
+  table: 'shifts' | 'shift_offers' | 'published_weeks' | 'time_off_requests'
+  record: ShiftRow | OfferRow | PublishRow | TimeOffRow | null
+  old_record: ShiftRow | OfferRow | TimeOffRow | null
 }
 
 interface Employee {
@@ -205,6 +219,36 @@ async function plan(p: Payload): Promise<Map<string, Note>> {
         tag: `offer-${o.id}`,
       })
     }
+  }
+
+  if (p.table === 'time_off_requests' && p.record) {
+    const r = p.record as TimeOffRow
+    const old = p.old_record as TimeOffRow | null
+    const who = nameOf(r.employee_id)
+    const dates = r.start_date === r.end_date ? fmtDate(r.start_date) : `${fmtDate(r.start_date, false)} – ${fmtDate(r.end_date, false)}`
+    const window = r.start_min === null || r.end_min === null ? '' : ` (${fmtTime(r.start_min)}–${fmtTime(r.end_min)})`
+    const tag = `timeoff-${r.id}`
+    const url = '/requests?tab=timeoff'
+
+    if (p.type === 'INSERT' && r.status === 'pending') {
+      const requester = userOf(r.employee_id)
+      for (const a of await adminUserIds(orgId)) {
+        if (a !== requester) add(a, { title: 'Time-off request', body: `${who} asked for ${dates}${window} off${r.note ? `: “${r.note}”` : '.'}`, url, tag })
+      }
+    }
+
+    if (p.type === 'UPDATE' && (r.status === 'approved' || r.status === 'denied') && old?.status !== r.status) {
+      const empUser = userOf(r.employee_id)
+      if (empUser && empUser !== r.decided_by) {
+        add(empUser, {
+          title: r.status === 'approved' ? 'Time off approved' : 'Time off denied',
+          body: `${dates}${window}${r.decision_note ? ` — “${r.decision_note}”` : ''}`,
+          url,
+          tag,
+        })
+      }
+    }
+    return out
   }
 
   if (p.table === 'shifts' && p.type === 'UPDATE' && p.record && p.old_record) {

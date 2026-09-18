@@ -74,7 +74,37 @@ export interface Employee {
   active: boolean
   /** admin = owner/manager; mirrored onto the linked login account */
   role: Role
+  /** Recurring weekly windows this person can't work (set by managers). */
+  unavailability: Unavailability[]
 }
+
+/** A weekly window the employee can't work; a whole day is 0..1440. */
+export interface Unavailability {
+  /** 0 = Sunday … 6 = Saturday */
+  dow: number
+  startMin: number
+  endMin: number
+}
+
+export type TimeOffStatus = 'pending' | 'approved' | 'denied' | 'cancelled'
+
+export interface TimeOffRequest {
+  id: string
+  employeeId: string
+  /** YYYY-MM-DD inclusive */
+  startDate: string
+  endDate: string
+  /** null = whole day(s) */
+  startMin: number | null
+  endMin: number | null
+  note: string | null
+  status: TimeOffStatus
+  decisionNote: string | null
+  decidedAt: string | null
+  createdAt: string
+}
+
+export type TimeOffInput = Pick<TimeOffRequest, 'employeeId' | 'startDate' | 'endDate' | 'startMin' | 'endMin' | 'note'>
 
 /** Login state of an employee's linked account (managers only). */
 export interface AccountStatus {

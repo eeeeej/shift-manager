@@ -273,6 +273,7 @@ export const SEED_EMPLOYEES: Employee[] = NAMES.map((name, i) => ({
   color: PALETTE[i % PALETTE.length],
   active: true,
   role: 'employee',
+  unavailability: [],
 }))
 
 const byName = new Map(SEED_EMPLOYEES.map((e) => [e.name.toLowerCase(), e]))

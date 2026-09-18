@@ -4,12 +4,13 @@ import { useData } from '../data/DataContext'
 import type { Position, ShiftInput } from '../types'
 import { conflictMessage, confirmOverlap, findConflicts } from '../utils/conflicts'
 import { CLOSE_MIN, minToTimeInput, parseShorthand, timeInputToMin } from '../utils/time'
+import { availabilityWarning } from '../utils/timeOff'
 import { ErrorText, Modal, WarnText } from './ui'
 
 export type ShiftDraft = Partial<ShiftInput> & { id?: string }
 
 export function ShiftModal({ draft, onClose }: { draft: ShiftDraft; onClose: () => void }) {
-  const { employees, shifts, positions, createShift, updateShift, deleteShift } = useData()
+  const { employees, shifts, timeOff, positions, createShift, updateShift, deleteShift } = useData()
   const [employeeId, setEmployeeId] = useState<string>(draft.employeeId ?? '')
   const [position, setPosition] = useState<Position>(draft.position ?? positions[0] ?? 'Server')
   const [date, setDate] = useState(draft.date ?? '')
@@ -31,6 +32,9 @@ export function ShiftModal({ draft, onClose }: { draft: ShiftDraft; onClose: () 
     { date, startMin: timeInputToMin(start), endMin: timeInputToMin(end) },
     draft.id,
   )
+  const offWarning = date
+    ? availabilityWarning(chosen, timeOff, { date, startMin: timeInputToMin(start), endMin: timeInputToMin(end) })
+    : null
 
   const applyShorthand = (text: string) => {
     setShorthand(text)
@@ -133,6 +137,7 @@ export function ShiftModal({ draft, onClose }: { draft: ShiftDraft; onClose: () 
             )}
           </select>
           <WarnText className="mt-2">{conflictMessage(conflicts, chosen?.name)}</WarnText>
+          {offWarning && <WarnText className="mt-2">{offWarning} You can still schedule them.</WarnText>}
         </div>
         <div>
           <label className="label">Date</label>

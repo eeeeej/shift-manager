@@ -10,6 +10,9 @@ import type {
   Shift,
   ShiftInput,
   ShiftOffer,
+  TimeOffInput,
+  TimeOffRequest,
+  TimeOffStatus,
 } from '../types'
 
 export interface Snapshot {
@@ -17,6 +20,7 @@ export interface Snapshot {
   shifts: Shift[]
   offers: ShiftOffer[]
   publishedWeeks: PublishedWeek[]
+  timeOff: TimeOffRequest[]
 }
 
 export interface OfferInput {
@@ -59,4 +63,8 @@ export interface DataStore {
   claimOffer(offerId: string, claimerEmployeeId: string): Promise<void>
   /** `outcome` is 'reassigned' when a manager moved the shift instead of cancelling the offer outright. */
   cancelOffer(offerId: string, byName?: string, outcome?: 'cancelled' | 'reassigned'): Promise<void>
+
+  createTimeOff(orgId: string, input: TimeOffInput): Promise<TimeOffRequest>
+  /** Staff withdraw ('cancelled'); managers approve/deny with an optional note. */
+  setTimeOffStatus(id: string, status: Exclude<TimeOffStatus, 'pending'>, decisionNote?: string | null): Promise<TimeOffRequest>
 }

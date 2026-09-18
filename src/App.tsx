@@ -7,7 +7,7 @@ import { Schedule } from './pages/Schedule'
 import { Team } from './pages/Team'
 import { NewOrganization } from './pages/NewOrganization'
 import { OrgSettings } from './pages/OrgSettings'
-import { Offers } from './pages/Offers'
+import { Requests } from './pages/Requests'
 import { Install } from './pages/Install'
 import { Login } from './pages/auth/Login'
 import { Register } from './pages/auth/Register'
@@ -57,7 +57,8 @@ export default function App() {
       <Route element={<RequireAuth />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/schedule" element={<Schedule />} />
-        <Route path="/offers" element={<Offers />} />
+        <Route path="/requests" element={<Requests />} />
+        <Route path="/offers" element={<Navigate to="/requests" replace />} />
         <Route path="/new" element={<NewOrganization />} />
         <Route element={<RequireAdmin />}>
           <Route path="/team" element={<Team />} />

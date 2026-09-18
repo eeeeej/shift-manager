@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { OfferCard } from '../components/OfferCard'
 import { OfferModal } from '../components/OfferModal'
 import { ShiftRow } from '../components/ShiftCard'
-import { EmptyState, Modal, PageHeader } from '../components/ui'
+import { EmptyState, Modal } from '../components/ui'
 import { useData } from '../data/DataContext'
 import { visibleOffersFor } from '../data/offers'
 import type { Shift } from '../types'
@@ -11,7 +11,8 @@ import { formatDateShort, todayKey } from '../utils/time'
 
 type Tab = 'open' | 'mine' | 'history'
 
-export function Offers() {
+/** "Shift offers" tab of the Requests page. */
+export function OffersSection() {
   const { offers, shifts, me, isAdmin, employeeById } = useData()
   const [tab, setTab] = useState<Tab>('open')
   const [picking, setPicking] = useState(false)
@@ -40,17 +41,14 @@ export function Offers() {
 
   return (
     <div>
-      <PageHeader
-        title="Shift offers"
-        subtitle={isAdmin ? 'Every trade across the team' : 'Trade shifts with coworkers who share your position'}
-        actions={
-          me && (
-            <button className="btn-primary" onClick={() => setPicking(true)}>
-              <Plus size={16} /> Offer a shift
-            </button>
-          )
-        }
-      />
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">{isAdmin ? 'Every trade across the team' : 'Trade shifts with coworkers who share your position'}</p>
+        {me && (
+          <button className="btn-primary flex-shrink-0" onClick={() => setPicking(true)}>
+            <Plus size={16} /> Offer a shift
+          </button>
+        )}
+      </div>
 
       <div className="mb-4 flex gap-1 border-b border-slate-200">
         {tabs.map((t) => (

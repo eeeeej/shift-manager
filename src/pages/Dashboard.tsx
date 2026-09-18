@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { NotificationsCard } from '../components/NotificationsCard'
 import { OfferCard } from '../components/OfferCard'
+import { TimeOffCard } from '../components/TimeOffCard'
 import { ShiftRow } from '../components/ShiftCard'
 import { ShiftDetailModal } from '../components/ShiftDetailModal'
 import { ShiftModal, type ShiftDraft } from '../components/ShiftModal'
@@ -38,7 +39,7 @@ function Stat({ icon: Icon, label, value, to }: { icon: typeof Clock; label: str
 
 export function Dashboard() {
   const { user } = useAuth()
-  const { shifts, offers, employees, me, isAdmin, employeeById } = useData()
+  const { shifts, offers, employees, timeOff, me, isAdmin, employeeById } = useData()
   const [draft, setDraft] = useState<ShiftDraft | null>(null)
   const [detail, setDetail] = useState<Shift | null>(null)
   const [upcomingView, setUpcomingView] = useState<'list' | 'calendar'>(() =>
@@ -52,6 +53,7 @@ export function Dashboard() {
   const today = todayKey()
   const week = useMemo(() => dateRange(startOfWeek(today), 7), [today])
   const visibleOffers = visibleOffersFor(offers, shifts, me, isAdmin).filter((o) => o.status === 'open')
+  const pendingTimeOff = timeOff.filter((r) => r.status === 'pending').sort((a, b) => a.startDate.localeCompare(b.startDate))
 
   const todayShifts = shifts.filter((s) => s.date === today)
   const weekShifts = shifts.filter((s) => week.includes(s.date))
@@ -87,7 +89,7 @@ export function Dashboard() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat icon={CalendarDays} label="Shifts this week" value={weekShifts.length} to="/schedule" />
             <Stat icon={Clock} label={openToday ? `Today (${openToday} open)` : 'Shifts today'} value={todayShifts.length} />
-            <Stat icon={ArrowLeftRight} label="Open trade offers" value={visibleOffers.length} to="/offers" />
+            <Stat icon={ArrowLeftRight} label="Open trade offers" value={visibleOffers.length} to="/requests" />
             <Stat icon={Users} label="Active staff" value={employees.filter((e) => e.active).length} to="/team" />
           </div>
 
@@ -105,6 +107,22 @@ export function Dashboard() {
             )}
           </section>
 
+          {pendingTimeOff.length > 0 && (
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="font-semibold">Time-off requests</h2>
+                <Link to="/requests?tab=timeoff" className="text-sm text-slate-600 hover:underline">
+                  All requests →
+                </Link>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {pendingTimeOff.slice(0, 4).map((r) => (
+                  <TimeOffCard key={r.id} request={r} />
+                ))}
+              </div>
+            </section>
+          )}
+
           {visibleOffers.length > 0 && (
             <section>
               <h2 className="mb-2 font-semibold">Open trade offers</h2>
@@ -121,7 +139,7 @@ export function Dashboard() {
           <div className="grid grid-cols-3 gap-3">
             <Stat icon={CalendarDays} label="My shifts this week" value={myWeek.length} to="/schedule" />
             <Stat icon={Clock} label="Hours this week" value={(myWeek.reduce((a, s) => a + s.endMin - s.startMin, 0) / 60).toFixed(1)} />
-            <Stat icon={ArrowLeftRight} label="Offers to claim" value={visibleOffers.filter((o) => o.offeredBy !== me?.id).length} to="/offers" />
+            <Stat icon={ArrowLeftRight} label="Offers to claim" value={visibleOffers.filter((o) => o.offeredBy !== me?.id).length} to="/requests" />
           </div>
 
           {!me && (
@@ -196,7 +214,7 @@ export function Dashboard() {
           <section>
             <div className="mb-2 flex items-center justify-between">
               <h2 className="font-semibold">Shifts available to claim</h2>
-              <Link to="/offers" className="text-sm text-slate-600 hover:underline">
+              <Link to="/requests" className="text-sm text-slate-600 hover:underline">
                 All offers →
               </Link>
             </div>

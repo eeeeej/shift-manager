@@ -14,6 +14,9 @@ import {
   type Shift,
   type ShiftInput,
   type ShiftOffer,
+  type TimeOffInput,
+  type TimeOffRequest,
+  type TimeOffStatus,
 } from '../types'
 import type { Snapshot } from './store'
 import { isDemoMode, supabase } from '../lib/supabase'
@@ -44,6 +47,8 @@ export interface DataApi {
   offers: ShiftOffer[]
   /** Weeks visible to staff. Weeks up to and including the current one are always published. */
   publishedWeeks: PublishedWeek[]
+  /** Staff: own requests + everyone's approved time off. Managers: all. */
+  timeOff: TimeOffRequest[]
   isWeekPublished(date: string): boolean
   /** Manager: publish every draft week from the current week through the one containing `date`. */
   publishThrough(date: string): Promise<void>
@@ -76,12 +81,15 @@ export interface DataApi {
   createOffer(input: OfferInput): Promise<void>
   claimOffer(offerId: string, claimerEmployeeId: string): Promise<void>
   cancelOffer(offerId: string, outcome?: 'cancelled' | 'reassigned'): Promise<void>
+
+  createTimeOff(input: TimeOffInput): Promise<void>
+  setTimeOffStatus(id: string, status: Exclude<TimeOffStatus, 'pending'>, decisionNote?: string | null): Promise<void>
 }
 
 const DataContext = createContext<DataApi | null>(null)
 
 const store: DataStore = isDemoMode ? new MockStore() : new SupabaseStore(supabase!)
-const EMPTY: Snapshot = { employees: [], shifts: [], offers: [], publishedWeeks: [] }
+const EMPTY: Snapshot = { employees: [], shifts: [], offers: [], publishedWeeks: [], timeOff: [] }
 const ORG_KEY = 'shift-manager:org'
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -92,6 +100,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [rawShifts, setShifts] = useState<Shift[]>([])
   const [rawOffers, setOffers] = useState<ShiftOffer[]>([])
   const [rawWeeks, setWeeks] = useState<PublishedWeek[]>([])
+  const [rawTimeOff, setTimeOff] = useState<TimeOffRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selfServe, setSelfServe] = useState(false)
@@ -122,6 +131,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setShifts([])
         setOffers([])
         setWeeks([])
+        setTimeOff([])
         setError(null)
         return
       }
@@ -130,6 +140,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setShifts(snap.shifts)
       setOffers(snap.offers)
       setWeeks(snap.publishedWeeks)
+      setTimeOff(snap.timeOff)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -162,6 +173,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_offers' }, soon)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, soon)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'published_weeks' }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'time_off_requests' }, soon)
       .subscribe()
     return () => {
       clearTimeout(timer)
@@ -173,6 +185,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const employees = user ? rawEmployees : EMPTY.employees
   const publishedWeeks = user ? rawWeeks : EMPTY.publishedWeeks
+  const timeOff = user ? rawTimeOff : EMPTY.timeOff
 
   const me = useMemo(() => {
     if (!user) return null
@@ -238,6 +251,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       shifts,
       offers,
       publishedWeeks,
+      timeOff,
       isWeekPublished,
       publishThrough: (date) => run(() => store.publishWeeks(requireOrg(), date, me?.name ?? user?.fullName ?? user?.email ?? '')),
       loading,
@@ -266,8 +280,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       claimOffer: (offerId, claimer) => run(() => store.claimOffer(offerId, claimer)),
       cancelOffer: (offerId, outcome) =>
         run(() => store.cancelOffer(offerId, me?.name ?? user?.fullName ?? user?.email, outcome)),
+      createTimeOff: (input) => run(() => store.createTimeOff(requireOrg(), input)),
+      setTimeOffStatus: (id, status, note) => run(() => store.setTimeOffStatus(id, status, note)),
     }),
-    [orgs, org, setOrg, canCreateOrg, positions, employees, shifts, offers, publishedWeeks, isWeekPublished, loading, error, me, isAdmin, isOwner, reload, run, user, requireOrg],
+    [orgs, org, setOrg, canCreateOrg, positions, employees, shifts, offers, publishedWeeks, timeOff, isWeekPublished, loading, error, me, isAdmin, isOwner, reload, run, user, requireOrg],
   )
 
   return <DataContext.Provider value={api}>{children}</DataContext.Provider>
