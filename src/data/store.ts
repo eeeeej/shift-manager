@@ -1,5 +1,6 @@
 import type {
   AccountStatus,
+  BrandImageKind,
   Employee,
   EmployeeInput,
   NewOrganizationInput,
@@ -32,6 +33,8 @@ export interface DataStore {
   selfServeOrgsEnabled(): Promise<boolean>
   createOrganization(input: NewOrganizationInput): Promise<string>
   updateOrganization(id: string, patch: Partial<OrganizationInput>): Promise<Organization>
+  /** Stores a processed brand image and resolves with its public URL (owners only). */
+  uploadBrandImage(orgId: string, kind: BrandImageKind, blob: Blob): Promise<string>
   /** Everything for one organization. RLS is the authority; the filter keeps multi-org users' data apart. */
   load(orgId: string): Promise<Snapshot>
 

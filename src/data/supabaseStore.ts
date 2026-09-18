@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AccountStatus, Employee, EmployeeInput, NewOrganizationInput, OfferStatus, OrgBrand, Organization, OrganizationInput, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
+import type { AccountStatus, BrandImageKind, Employee, EmployeeInput, NewOrganizationInput, OfferStatus, OrgBrand, Organization, OrganizationInput, Role, Shift, ShiftInput, ShiftOffer, ShiftStatus } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 
 interface OrgRow {
@@ -169,6 +169,13 @@ export class SupabaseStore implements DataStore {
     if (patch.brand !== undefined) row.brand = patch.brand
     const res = await this.client.from('organizations').update(row).eq('id', id).select('*').single()
     return toOrg(unwrap<OrgRow>(res))
+  }
+
+  async uploadBrandImage(orgId: string, kind: BrandImageKind, blob: Blob): Promise<string> {
+    const path = `${orgId}/${kind}-${Date.now()}.png`
+    const { error } = await this.client.storage.from('brand').upload(path, blob, { contentType: 'image/png', cacheControl: '31536000' })
+    if (error) throw new Error(error.message)
+    return this.client.storage.from('brand').getPublicUrl(path).data.publicUrl
   }
 
   async load(orgId: string): Promise<Snapshot> {
