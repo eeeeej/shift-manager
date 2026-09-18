@@ -26,7 +26,7 @@ interface OfferRow {
   offered_by: string
   target_employee_id: string | null
   claimed_by: string | null
-  status: 'open' | 'claimed' | 'cancelled'
+  status: 'open' | 'claimed' | 'cancelled' | 'reassigned'
 }
 
 interface Payload {
