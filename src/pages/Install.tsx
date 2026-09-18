@@ -8,10 +8,15 @@ import { isStandalone, isWrongBrowser, platform, promptInstall, useInstallPrompt
 
 type Tab = Exclude<Platform, 'other'>
 
-function Step({ n, children }: { n: number; children: ReactNode }) {
+function Step({ n, done, children }: { n: number; done?: boolean; children: ReactNode }) {
   return (
     <li className="card flex gap-3 p-4">
-      <span className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full bg-[var(--accent)] text-sm font-bold text-white">{n}</span>
+      <span
+        className={`grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-sm font-bold text-white ${done ? 'bg-emerald-500' : 'bg-[var(--accent)]'}`}
+        aria-label={done ? `Step ${n} done` : `Step ${n}`}
+      >
+        {done ? <Check size={16} strokeWidth={3} /> : n}
+      </span>
       <div className="min-w-0 text-[15px] leading-snug">{children}</div>
     </li>
   )
@@ -99,18 +104,20 @@ export function Install() {
 
         {tab === 'ios' ? (
           <ol className="mt-4 space-y-3">
-            <Step n={1}>
+            <Step n={1} done={Boolean(user) && !wrongBrowser && platform() === 'ios'}>
               Open this page in <b>Safari</b> and sign in.
             </Step>
             <Step n={2}>
-              Tap the <b>Share</b> button at the bottom of the screen.
+              Tap <b>Share</b>.
               <div className="mt-2 flex items-center gap-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-600">
                 <Share size={26} strokeWidth={1.75} className="flex-shrink-0 text-[#007aff]" />
-                The square with an arrow pointing up.
+                <div>
+                  The square with an arrow pointing up, in the bar at the bottom of the screen. Don't see it? Tap <b>···</b> next to the address bar first — Share is in that menu.
+                </div>
               </div>
             </Step>
             <Step n={3}>
-              Scroll down and tap <b>Add to Home Screen</b>.
+              Scroll down and tap <b>Add to Home Screen</b>. If it isn't listed, tap <b>View More</b> first.
               <div className="mt-2 space-y-1.5 rounded-lg bg-slate-100 p-3">
                 <Row>
                   Copy <Copy size={16} className="text-slate-500" />
@@ -137,7 +144,7 @@ export function Install() {
           </ol>
         ) : (
           <ol className="mt-4 space-y-3">
-            <Step n={1}>
+            <Step n={1} done={Boolean(user) && !wrongBrowser && platform() === 'android'}>
               Open this page in <b>Chrome</b> and sign in.
             </Step>
             <Step n={2}>
