@@ -25,7 +25,11 @@ export interface OrgBrand {
   displayName?: string
   accentColor?: string
   logoUrl?: string
+  /** Square PNG used as the home-screen icon. */
+  iconUrl?: string
 }
+
+export type BrandImageKind = 'logo' | 'icon'
 
 export interface Organization {
   id: string

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   type AccountStatus,
+  type BrandImageKind,
   DEFAULT_POSITIONS,
   isManagerRole,
   type Employee,
@@ -33,6 +34,8 @@ export interface DataApi {
   /** Creates a restaurant and switches to it; resolves with its id. */
   createOrganization(input: NewOrganizationInput): Promise<string>
   updateOrganization(patch: Partial<OrganizationInput>): Promise<void>
+  /** Uploads a processed logo/icon for the current restaurant; resolves with its public URL. */
+  uploadBrandImage(kind: BrandImageKind, blob: Blob): Promise<string>
   /** Positions of the current organization. */
   positions: Position[]
   employees: Employee[]
@@ -226,6 +229,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return id
       },
       updateOrganization: (patch) => run(() => store.updateOrganization(requireOrg(), patch)),
+      uploadBrandImage: (kind, blob) => store.uploadBrandImage(requireOrg(), kind, blob),
       positions,
       employees,
       shifts,

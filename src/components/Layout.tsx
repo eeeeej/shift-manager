@@ -35,7 +35,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 short:py-1">
           <div className="flex items-center gap-2">
             {org?.brand.logoUrl ? (
-              <img src={org.brand.logoUrl} alt="" className="h-8 w-8 rounded-lg object-cover" />
+              <img src={org.brand.logoUrl} alt="" className="h-8 max-w-[40vw] object-contain sm:max-w-[240px]" />
             ) : (
               <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">S</span>
             )}

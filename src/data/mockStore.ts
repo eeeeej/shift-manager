@@ -1,4 +1,4 @@
-import { DEFAULT_POSITIONS, type AccountStatus, type Employee, type EmployeeInput, type NewOrganizationInput, type Organization, type OrganizationInput, type Shift, type ShiftInput, type ShiftOffer } from '../types'
+import { DEFAULT_POSITIONS, type AccountStatus, type BrandImageKind, type Employee, type EmployeeInput, type NewOrganizationInput, type Organization, type OrganizationInput, type Shift, type ShiftInput, type ShiftOffer } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 import { addDays, startOfWeek, todayKey } from '../utils/time'
 import { SEED_EMPLOYEES, SEED_OFFERS, SEED_SHIFTS } from './seed'
@@ -86,6 +86,15 @@ export class MockStore implements DataStore {
     this.org = { ...this.org, ...patch }
     localStorage.setItem(ORG_KEY, JSON.stringify(this.org))
     return this.org
+  }
+
+  async uploadBrandImage(_orgId: string, _kind: BrandImageKind, blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve(String(r.result))
+      r.onerror = () => reject(r.error)
+      r.readAsDataURL(blob)
+    })
   }
 
   async load(): Promise<Snapshot> {
