@@ -475,17 +475,23 @@ export function Schedule() {
     return out;
   }, [publishTarget, isWeekPublished]);
   const [publishing, setPublishing] = useState(false);
+  const fmtShort = (key: string) =>
+    fromDateKey(key).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const publishThroughLabel = fmtShort(addDays(publishTarget, 6));
   const publish = async () => {
     const n = draftWeeks.length;
-    const from = fromDateKey(draftWeeks[0]);
-    const to = fromDateKey(addDays(publishTarget, 6));
-    const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    const affected = new Set(
-      shifts.filter((s) => s.employeeId && draftWeeks.includes(startOfWeek(s.date))).map((s) => s.employeeId),
-    ).size;
+    const draftShifts = shifts.filter((s) => draftWeeks.includes(startOfWeek(s.date)));
+    const weeksWithShifts = new Set(draftShifts.map((s) => startOfWeek(s.date))).size;
+    const affected = new Set(draftShifts.filter((s) => s.employeeId).map((s) => s.employeeId)).size;
+    const coverage =
+      n === 1
+        ? weeksWithShifts === 1
+          ? ""
+          : " (no shifts scheduled yet)"
+        : ` (shifts in ${weeksWithShifts} of ${n} weeks)`;
     if (
       !confirm(
-        `Publish ${n === 1 ? "the week of" : `${n} weeks,`} ${fmt(from)} – ${fmt(to)}? Staff will see these shifts and ${affected} ${affected === 1 ? "person" : "people"} will be notified.`,
+        `Publish schedule through ${publishThroughLabel}? Staff will see ${fmtShort(draftWeeks[0])} – ${publishThroughLabel}${coverage}; ${affected} ${affected === 1 ? "person" : "people"} will be notified.`,
       )
     )
       return;
@@ -548,7 +554,7 @@ export function Schedule() {
                     disabled={publishing}
                     title={`Make ${draftWeeks.length === 1 ? "this week" : `${draftWeeks.length} weeks`} visible to staff and notify them`}
                   >
-                    <Send size={16} /> Publish {isMonth ? "month" : "week"}
+                    <Send size={16} /> Publish through {publishThroughLabel}
                   </button>
                 )}
                 <button
