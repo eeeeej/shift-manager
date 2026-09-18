@@ -5,6 +5,8 @@ import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { Schedule } from './pages/Schedule'
 import { Team } from './pages/Team'
+import { NewOrganization } from './pages/NewOrganization'
+import { OrgSettings } from './pages/OrgSettings'
 import { Offers } from './pages/Offers'
 import { Login } from './pages/auth/Login'
 import { Register } from './pages/auth/Register'
@@ -49,8 +51,10 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/schedule" element={<Schedule />} />
         <Route path="/offers" element={<Offers />} />
+        <Route path="/new" element={<NewOrganization />} />
         <Route element={<RequireAdmin />}>
           <Route path="/team" element={<Team />} />
+          <Route path="/settings" element={<OrgSettings />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

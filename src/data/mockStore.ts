@@ -1,9 +1,10 @@
-import { DEFAULT_POSITIONS, type Employee, type EmployeeInput, type Organization, type Shift, type ShiftInput, type ShiftOffer } from '../types'
+import { DEFAULT_POSITIONS, type Employee, type EmployeeInput, type NewOrganizationInput, type Organization, type OrganizationInput, type Shift, type ShiftInput, type ShiftOffer } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 import { SEED_EMPLOYEES, SEED_OFFERS, SEED_SHIFTS } from './seed'
 import { setDemoAccountRole } from '../auth/AuthContext'
 
 const KEY = 'shift-manager:demo:v2'
+const ORG_KEY = 'shift-manager:demo:org'
 
 /** The single organization demo mode runs as. */
 export const DEMO_ORG: Organization = {
@@ -42,17 +43,38 @@ export function isInvitedDemoEmail(email: string): boolean {
 
 export function resetDemoData() {
   localStorage.removeItem(KEY)
+  localStorage.removeItem(ORG_KEY)
+}
+
+function readOrg(): Organization {
+  const raw = localStorage.getItem(ORG_KEY)
+  return raw ? { ...DEMO_ORG, ...(JSON.parse(raw) as Partial<Organization>) } : DEMO_ORG
 }
 
 export class MockStore implements DataStore {
   private snap: Snapshot = readSnapshot()
+  private org: Organization = readOrg()
 
   private persist() {
     localStorage.setItem(KEY, JSON.stringify(this.snap))
   }
 
   async loadOrganizations(): Promise<Organization[]> {
-    return [DEMO_ORG]
+    return [this.org]
+  }
+
+  async selfServeOrgsEnabled(): Promise<boolean> {
+    return false
+  }
+
+  async createOrganization(_input: NewOrganizationInput): Promise<string> {
+    throw new Error('Demo mode has a single restaurant')
+  }
+
+  async updateOrganization(_id: string, patch: Partial<OrganizationInput>): Promise<Organization> {
+    this.org = { ...this.org, ...patch }
+    localStorage.setItem(ORG_KEY, JSON.stringify(this.org))
+    return this.org
   }
 
   async load(): Promise<Snapshot> {

@@ -1,4 +1,4 @@
-import type { Employee, EmployeeInput, Organization, Shift, ShiftInput, ShiftOffer } from '../types'
+import type { Employee, EmployeeInput, NewOrganizationInput, Organization, OrganizationInput, Shift, ShiftInput, ShiftOffer } from '../types'
 
 export interface Snapshot {
   employees: Employee[]
@@ -16,6 +16,10 @@ export interface OfferInput {
 export interface DataStore {
   /** Organizations the signed-in user belongs to. */
   loadOrganizations(): Promise<Organization[]>
+  /** Whether anyone (not just platform admins) may create a restaurant. */
+  selfServeOrgsEnabled(): Promise<boolean>
+  createOrganization(input: NewOrganizationInput): Promise<string>
+  updateOrganization(id: string, patch: Partial<OrganizationInput>): Promise<Organization>
   /** Everything for one organization. RLS is the authority; the filter keeps multi-org users' data apart. */
   load(orgId: string): Promise<Snapshot>
 

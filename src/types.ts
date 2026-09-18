@@ -34,6 +34,28 @@ export interface Organization {
   plan: string
 }
 
+/** Fields an org admin may edit (slug/plan are platform-only). */
+export interface OrganizationInput {
+  name: string
+  timezone: string
+  positions: Position[]
+  brand: OrgBrand
+}
+
+export interface NewOrganizationInput {
+  name: string
+  slug: string
+  positions?: Position[]
+}
+
+/** URL-safe short name: lowercase words joined by single dashes. */
+export const slugify = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
 export interface Employee {
   id: string
   name: string

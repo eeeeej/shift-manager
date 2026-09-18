@@ -1,5 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { DEFAULT_POSITIONS, type Employee, type EmployeeInput, type Organization, type Position, type Shift, type ShiftInput, type ShiftOffer } from '../types'
+import {
+  DEFAULT_POSITIONS,
+  type Employee,
+  type EmployeeInput,
+  type NewOrganizationInput,
+  type Organization,
+  type OrganizationInput,
+  type Position,
+  type Shift,
+  type ShiftInput,
+  type ShiftOffer,
+} from '../types'
 import type { Snapshot } from './store'
 import { isDemoMode, supabase } from '../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
@@ -13,6 +24,11 @@ export interface DataApi {
   /** The organization currently being viewed; null until orgs have loaded (or if the user has none). */
   org: Organization | null
   setOrg(orgId: string): void
+  /** True when the signed-in user may create a restaurant (platform admin, or self-serve enabled). */
+  canCreateOrg: boolean
+  /** Creates a restaurant and switches to it; resolves with its id. */
+  createOrganization(input: NewOrganizationInput): Promise<string>
+  updateOrganization(patch: Partial<OrganizationInput>): Promise<void>
   /** Positions of the current organization. */
   positions: Position[]
   employees: Employee[]
@@ -59,6 +75,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [rawOffers, setOffers] = useState<ShiftOffer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selfServe, setSelfServe] = useState(false)
 
   const org = useMemo(() => orgs.find((o) => o.id === orgId) ?? null, [orgs, orgId])
 
@@ -70,8 +87,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async () => {
     try {
-      const list = await store.loadOrganizations()
+      const [list, selfServeOn] = await Promise.all([store.loadOrganizations(), store.selfServeOrgsEnabled()])
       setOrgs(list)
+      setSelfServe(selfServeOn)
       // Fall back to the first org when none is chosen or the saved one is gone.
       const current = list.find((o) => o.id === orgId) ?? list[0] ?? null
       if (current && current.id !== orgId) {
@@ -145,6 +163,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const membership = user && org ? user.memberships.find((m) => m.orgId === org.id) : undefined
   const isAdmin = Boolean(user?.isSuperadmin) || membership?.role === 'admin' || me?.role === 'admin'
   const positions = org?.positions ?? DEFAULT_POSITIONS
+  const canCreateOrg = Boolean(user?.isSuperadmin) || selfServe
   const requireOrg = useCallback(() => {
     if (!org) throw new Error('No organization selected')
     return org.id
@@ -163,6 +182,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       orgs,
       org,
       setOrg,
+      canCreateOrg,
+      createOrganization: async (input) => {
+        const id = await store.createOrganization(input)
+        setOrg(id)
+        return id
+      },
+      updateOrganization: (patch) => run(() => store.updateOrganization(requireOrg(), patch)),
       positions,
       employees,
       shifts,
@@ -192,7 +218,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cancelOffer: (offerId, outcome) =>
         run(() => store.cancelOffer(offerId, me?.name ?? user?.fullName ?? user?.email, outcome)),
     }),
-    [orgs, org, setOrg, positions, employees, shifts, offers, loading, error, me, isAdmin, reload, run, user, requireOrg],
+    [orgs, org, setOrg, canCreateOrg, positions, employees, shifts, offers, loading, error, me, isAdmin, reload, run, user, requireOrg],
   )
 
   return <DataContext.Provider value={api}>{children}</DataContext.Provider>
