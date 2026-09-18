@@ -31,7 +31,7 @@ import { TimelineGrid } from "../components/TimelineGrid";
 import { EmptyState, PageHeader } from "../components/ui";
 import { useData } from "../data/DataContext";
 import { useIsDesktop } from "../hooks/useMediaQuery";
-import { POSITIONS, type Position, type Shift } from "../types";
+import type { Position, Shift } from "../types";
 import { confirmOverlap, findConflicts } from "../utils/conflicts";
 import {
   addDays,
@@ -88,6 +88,7 @@ export function Schedule() {
     shifts,
     employees,
     offers,
+    positions,
     isAdmin,
     me,
     employeeById,
@@ -297,8 +298,8 @@ export function Schedule() {
     const used = new Set(
       shifts.filter((s) => range.includes(s.date)).map((s) => s.position),
     );
-    return POSITIONS.filter((p) => used.has(p) || positionFilter.has(p));
-  }, [shifts, range, positionFilter]);
+    return positions.filter((p) => used.has(p) || positionFilter.has(p));
+  }, [shifts, range, positionFilter, positions]);
   /** Employees with a shift in the displayed range (admin filter chips). */
   const scheduledEmployees = useMemo(() => {
     const ids = new Set(

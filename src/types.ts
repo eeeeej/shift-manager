@@ -1,13 +1,37 @@
-export const POSITIONS = ['Server', 'Bartender', 'Bar Back', 'Host', 'Busser', 'Kitchen', 'Manager'] as const
-export type Position = (typeof POSITIONS)[number]
+/** Positions a new organization starts with; each org keeps its own list. */
+export const DEFAULT_POSITIONS = ['Server', 'Bartender', 'Bar Back', 'Host', 'Busser', 'Kitchen', 'Manager']
+export type Position = string
 
 export type Role = 'admin' | 'employee'
+
+export interface Membership {
+  orgId: string
+  role: Role
+}
 
 export interface Profile {
   id: string
   email: string
-  role: Role
   fullName: string | null
+  /** Platform operator: may create restaurants and manage every organization. */
+  isSuperadmin: boolean
+  memberships: Membership[]
+}
+
+export interface OrgBrand {
+  displayName?: string
+  accentColor?: string
+  logoUrl?: string
+}
+
+export interface Organization {
+  id: string
+  name: string
+  slug: string
+  timezone: string
+  positions: Position[]
+  brand: OrgBrand
+  plan: string
 }
 
 export interface Employee {

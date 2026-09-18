@@ -1,4 +1,4 @@
-import type { Employee, EmployeeInput, Shift, ShiftInput, ShiftOffer } from '../types'
+import type { Employee, EmployeeInput, Organization, Shift, ShiftInput, ShiftOffer } from '../types'
 
 export interface Snapshot {
   employees: Employee[]
@@ -14,15 +14,18 @@ export interface OfferInput {
 }
 
 export interface DataStore {
-  load(): Promise<Snapshot>
+  /** Organizations the signed-in user belongs to. */
+  loadOrganizations(): Promise<Organization[]>
+  /** Everything for one organization. RLS is the authority; the filter keeps multi-org users' data apart. */
+  load(orgId: string): Promise<Snapshot>
 
-  createShift(input: ShiftInput): Promise<Shift>
+  createShift(orgId: string, input: ShiftInput): Promise<Shift>
   updateShift(id: string, patch: Partial<ShiftInput>): Promise<Shift>
   deleteShift(id: string): Promise<void>
-  createShifts(inputs: ShiftInput[]): Promise<Shift[]>
+  createShifts(orgId: string, inputs: ShiftInput[]): Promise<Shift[]>
   deleteShifts(ids: string[]): Promise<void>
 
-  createEmployee(input: EmployeeInput): Promise<Employee>
+  createEmployee(orgId: string, input: EmployeeInput): Promise<Employee>
   updateEmployee(id: string, patch: Partial<EmployeeInput>): Promise<Employee>
   deleteEmployee(id: string): Promise<void>
   /** Send a login invite to the employee's email. */

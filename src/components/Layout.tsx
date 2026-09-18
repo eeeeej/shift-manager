@@ -10,7 +10,7 @@ import { InstallBanner } from './InstallBanner'
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth()
-  const { isAdmin, me, offers, shifts } = useData()
+  const { isAdmin, me, offers, shifts, org, orgs, setOrg } = useData()
   const openOffers = visibleOffersFor(offers, shifts, me, isAdmin).filter((o) => o.status === 'open').length
 
   const nav = [
@@ -31,7 +31,22 @@ export function Layout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 short:py-1">
           <div className="flex items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-slate-900 text-sm font-bold text-white">S</span>
-            <span className="font-semibold short:hidden">Shift Manager</span>
+            {orgs.length > 1 ? (
+              <select
+                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-semibold short:hidden"
+                value={org?.id ?? ''}
+                onChange={(e) => setOrg(e.target.value)}
+                aria-label="Restaurant"
+              >
+                {orgs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.brand.displayName ?? o.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="font-semibold short:hidden">{org ? org.brand.displayName ?? org.name : 'Shift Manager'}</span>
+            )}
             {isDemoMode && (
               <button
                 className="chip ml-2 bg-amber-100 text-amber-800 hover:bg-amber-200"

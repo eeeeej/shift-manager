@@ -13,6 +13,7 @@ type Op = 'INSERT' | 'UPDATE' | 'DELETE'
 
 interface ShiftRow {
   id: string
+  org_id: string
   employee_id: string | null
   position: string
   shift_date: string
@@ -22,6 +23,7 @@ interface ShiftRow {
 
 interface OfferRow {
   id: string
+  org_id: string
   shift_id: string
   offered_by: string
   target_employee_id: string | null
@@ -88,27 +90,29 @@ function when(s: ShiftRow): string {
   return `${fmtDate(s.shift_date)} · ${fmtRange(s)}`
 }
 
-async function loadEmployees(): Promise<Map<string, Employee>> {
-  const { data, error } = await admin.from('employees').select('id,name,positions,user_id,active')
+async function loadEmployees(orgId: string): Promise<Map<string, Employee>> {
+  const { data, error } = await admin.from('employees').select('id,name,positions,user_id,active').eq('org_id', orgId)
   if (error) throw error
   return new Map((data as Employee[]).map((e) => [e.id, e]))
 }
 
-async function adminUserIds(): Promise<string[]> {
-  const { data, error } = await admin.from('profiles').select('id').eq('role', 'admin')
+async function adminUserIds(orgId: string): Promise<string[]> {
+  const { data, error } = await admin.from('memberships').select('user_id').eq('org_id', orgId).eq('role', 'admin')
   if (error) throw error
-  return (data as { id: string }[]).map((p) => p.id)
+  return (data as { user_id: string }[]).map((m) => m.user_id)
 }
 
 async function loadShift(id: string): Promise<ShiftRow | null> {
-  const { data } = await admin.from('shifts').select('id,employee_id,position,shift_date,start_min,end_min').eq('id', id).maybeSingle()
+  const { data } = await admin.from('shifts').select('id,org_id,employee_id,position,shift_date,start_min,end_min').eq('id', id).maybeSingle()
   return data as ShiftRow | null
 }
 
 /** Build the list of (user_id → note) for this event. */
 async function plan(p: Payload): Promise<Map<string, Note>> {
   const out = new Map<string, Note>()
-  const emps = await loadEmployees()
+  const orgId = (p.record ?? p.old_record)?.org_id
+  if (!orgId) return out
+  const emps = await loadEmployees(orgId)
   const userOf = (empId: string | null | undefined) => (empId ? emps.get(empId)?.user_id ?? null : null)
   const nameOf = (empId: string | null | undefined) => (empId ? emps.get(empId)?.name ?? 'Someone' : 'Someone')
   const add = (userId: string | null, note: Note) => {
@@ -120,7 +124,7 @@ async function plan(p: Payload): Promise<Map<string, Note>> {
     const old = p.old_record as OfferRow | null
     const shift = await loadShift(o.shift_id)
     if (!shift) return out
-    const admins = await adminUserIds()
+    const admins = await adminUserIds(orgId)
     const offerer = nameOf(o.offered_by)
 
     if (p.type === 'INSERT' && o.status === 'open') {

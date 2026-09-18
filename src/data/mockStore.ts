@@ -1,9 +1,20 @@
-import type { Employee, EmployeeInput, Shift, ShiftInput, ShiftOffer } from '../types'
+import { DEFAULT_POSITIONS, type Employee, type EmployeeInput, type Organization, type Shift, type ShiftInput, type ShiftOffer } from '../types'
 import type { DataStore, OfferInput, Snapshot } from './store'
 import { SEED_EMPLOYEES, SEED_OFFERS, SEED_SHIFTS } from './seed'
 import { setDemoAccountRole } from '../auth/AuthContext'
 
 const KEY = 'shift-manager:demo:v2'
+
+/** The single organization demo mode runs as. */
+export const DEMO_ORG: Organization = {
+  id: 'org-demo',
+  name: "Francie's",
+  slug: 'francies',
+  timezone: 'America/Chicago',
+  positions: DEFAULT_POSITIONS,
+  brand: {},
+  plan: 'free',
+}
 
 function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`
@@ -40,11 +51,15 @@ export class MockStore implements DataStore {
     localStorage.setItem(KEY, JSON.stringify(this.snap))
   }
 
+  async loadOrganizations(): Promise<Organization[]> {
+    return [DEMO_ORG]
+  }
+
   async load(): Promise<Snapshot> {
     return structuredClone(this.snap)
   }
 
-  async createShift(input: ShiftInput): Promise<Shift> {
+  async createShift(_orgId: string, input: ShiftInput): Promise<Shift> {
     const shift: Shift = { ...input, id: uid('shift') }
     this.snap.shifts.push(shift)
     this.persist()
@@ -66,7 +81,7 @@ export class MockStore implements DataStore {
     this.persist()
   }
 
-  async createShifts(inputs: ShiftInput[]): Promise<Shift[]> {
+  async createShifts(_orgId: string, inputs: ShiftInput[]): Promise<Shift[]> {
     const created = inputs.map((input) => ({ ...input, id: uid('shift') }))
     this.snap.shifts.push(...created)
     this.persist()
@@ -80,7 +95,7 @@ export class MockStore implements DataStore {
     this.persist()
   }
 
-  async createEmployee(input: EmployeeInput): Promise<Employee> {
+  async createEmployee(_orgId: string, input: EmployeeInput): Promise<Employee> {
     const employee: Employee = { ...input, id: uid('emp'), userId: null }
     this.snap.employees.push(employee)
     this.persist()
